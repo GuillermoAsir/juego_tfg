@@ -14,6 +14,8 @@ var mision2_completada = false
 
 const USER_COLOR = "[color=green]usuario@usuario[/color]"
 const PROMPT_BASE = "$"
+var prompt_text = ""
+var history_text = ""  # Variable para almacenar todo el texto de la consola
 
 func _ready():
 	history.bbcode_enabled = true
@@ -21,7 +23,15 @@ func _ready():
 	mision2_popup.visible = false
 	init_structure()
 	show_prompt()
+
 	save_button.pressed.connect(_on_save_button_pressed)
+
+# Actualiza el prompt para no perder la visualización
+func show_prompt():
+	var path_color = "[color=skyblue]" + current_path + "[/color]"
+	prompt_text = "\n" + USER_COLOR + ":" + path_color + PROMPT_BASE + " "
+	history_text += prompt_text  # Agrega el prompt al historial de texto
+	history.text = history_text  # Actualiza el texto de la consola
 
 func init_structure():
 	if not DirAccess.dir_exists_absolute(BASE_PATH):
@@ -50,19 +60,17 @@ func _input(event):
 
 		if event.keycode == KEY_ENTER:
 			process_command(current_command.strip_edges())
-			current_command = ""
+			current_command = ""  # Limpiamos el comando actual después de procesarlo
 		elif event.keycode == KEY_BACKSPACE:
 			if current_command.length() > 0:
+				# Borramos un carácter de current_command
 				current_command = current_command.left(current_command.length() - 1)
-				history.text = history.text.left(history.text.length() - 1)
+				# También eliminamos el último carácter del comando sin afectar el prompt
+				history.text = history_text + current_command
 		elif event.unicode > 0:
 			var char_input = char(event.unicode)
 			current_command += char_input
-			history.append_text(char_input)
-
-func show_prompt():
-	var path_color = "[color=skyblue]" + current_path + "[/color]"
-	history.append_text("\n" + USER_COLOR + ":" + path_color + PROMPT_BASE + " ")
+			history.text = history_text + current_command
 
 func get_full_path():
 	var normalized = current_path
@@ -72,6 +80,9 @@ func get_full_path():
 
 func process_command(command: String):
 	var output := ""
+
+	# <-- AÑADIDO PARA GUARDAR COMANDO EN HISTORIAL -->
+	history_text += command
 
 	if command.begins_with("cd "):
 		var target = command.substr(3).strip_edges()
@@ -173,22 +184,24 @@ func process_command(command: String):
 			output = "rm: no se puede eliminar '" + target + "': No existe tal archivo o directorio"
 
 	elif command == "clear":
-		history.text = ""
-		show_prompt()
+		history_text = ""  # Limpiamos todo el historial de la consola
+		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
 
 	elif command == "help":
-		output = "Comandos disponibles:\ncd [dir], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], clear, help"
+		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], clear, help"
 
 	elif command == "":
 		pass
 	else:
 		output = "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]})
 
+	# Agregar la salida del comando al historial **antes** de agregar el prompt para el siguiente comando
 	if output != "":
-		history.append_text("\n" + output)
+		history_text += "\n" + output  # Agrega la salida del comando al historial
+		history.text = history_text  # Actualiza el texto de la consola
 
-	show_prompt()
+	show_prompt()  # Muestra el prompt para el siguiente comando
 
 func _on_save_button_pressed():
 	var file = FileAccess.open(current_file_being_edited, FileAccess.WRITE)
@@ -196,5 +209,6 @@ func _on_save_button_pressed():
 		file.store_string(editor.text)
 		file.close()
 		nano_panel.visible = false
-		history.append_text("\nArchivo guardado: " + current_file_being_edited)
+		history_text += "\nArchivo guardado: " + current_file_being_edited
+		history.text = history_text
 		show_prompt()
