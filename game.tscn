@@ -21,8 +21,8 @@ script = ExtResource("1_80nbo")
 
 [node name="Background" type="PanelContainer" parent="."]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 1152.0
+offset_bottom = 648.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_e2o6t")
 
 [node name="MarginContainer" type="MarginContainer" parent="Background"]
@@ -41,8 +41,10 @@ custom_minimum_size = Vector2(800, 600)
 layout_mode = 2
 bbcode_enabled = true
 scroll_following = true
+metadata/_edit_group_ = true
 
 [node name="NanoPanel" type="Panel" parent="."]
+visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
 offset_right = 40.0
@@ -50,6 +52,7 @@ offset_bottom = 40.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_80nbo")
 
 [node name="Editor" type="TextEdit" parent="NanoPanel"]
+visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
 offset_right = 8.0
@@ -63,3 +66,29 @@ offset_bottom = 8.0
 text = "guardar y salir"
 
 [node name="Mision2Popup" type="Popup" parent="."]
+
+[node name="ContainerDialogo" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = 425.0
+offset_right = 1153.0
+offset_bottom = 604.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="DialogBox" type="Popup" parent="ContainerDialogo"]
+position = Vector2i(0, 474)
+size = Vector2i(1154, 150)
+visible = true
+
+[node name="DialogContent" type="Label" parent="ContainerDialogo/DialogBox"]
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="DialogArrow" type="TextureRect" parent="ContainerDialogo/DialogBox"]
+offset_right = 40.0
+offset_bottom = 40.0
