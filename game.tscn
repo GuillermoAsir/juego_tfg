@@ -44,7 +44,6 @@ scroll_following = true
 metadata/_edit_group_ = true
 
 [node name="NanoPanel" type="Panel" parent="."]
-visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
 offset_right = 40.0
@@ -52,7 +51,6 @@ offset_bottom = 40.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_80nbo")
 
 [node name="Editor" type="TextEdit" parent="NanoPanel"]
-visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
 offset_right = 8.0

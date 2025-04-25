@@ -30,7 +30,6 @@ var current_dialog_index = 0
 var mission2_dialogs = [
 	"Excelente, ya te encuentras en el directorio donde está el archivo. \nAhora falta listarlo para asegurarnos que se encuentra ahí. \nPara ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
 ]
-# Nueva variable para el segundo diálogo
 var mission2_dialogs2 = [
 	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío.txt`."
 ]
@@ -221,13 +220,29 @@ func process_command(command: String):
 		else:
 			output = "rm: no se puede eliminar '" + target + "': No existe tal archivo o directorio"
 
+	elif command.begins_with("cat "):
+		var filename = command.substr(4).strip_edges()  # Extraer el nombre del archivo
+		if filename == "":
+			output = "Error: Debes proporcionar el nombre de un archivo."
+		else:
+			var file_path = get_full_path() + "/" + filename
+			if FileAccess.file_exists(file_path):
+				var file = FileAccess.open(file_path, FileAccess.READ)
+				if file:
+					output = file.get_as_text()  # Leer el contenido del archivo
+					file.close()
+				else:
+					output = "Error: No se pudo abrir el archivo."
+			else:
+				output = "Error: El archivo '" + filename + "' no existe."
+
 	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
 
 	elif command == "help":
-		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], clear, help"
+		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
 
 	elif command == "":
 		pass
@@ -274,6 +289,7 @@ func advance_dialog():
 			show_dialog()
 		else:
 			close_dialog()
+			mision2_completada = true  # Marcar la misión como completada
 
 func close_dialog():
 	dialog_active = false
