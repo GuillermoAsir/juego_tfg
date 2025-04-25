@@ -24,16 +24,17 @@ const PROMPT_BASE = "$"
 var prompt_text = ""
 var history_text = ""  # Variable para almacenar todo el texto de la consola
 
-# Nueva variable para controlar el estado del diálogo
 # Variables para el sistema de diálogo
 var dialog_active = false
 var current_dialog_index = 0
 var mission2_dialogs = [
-	"Excelente, ya te encuentras en el directorio donde está el archivo. 
-	Ahora falta listarlo para asegurarnos que se encuentra ahí. 
-	Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro.",
-	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío`."
+	"Excelente, ya te encuentras en el directorio donde está el archivo. \nAhora falta listarlo para asegurarnos que se encuentra ahí. \nPara ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
 ]
+# Nueva variable para el segundo diálogo
+var mission2_dialogs2 = [
+	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío.txt`."
+]
+var esperando_ls = false  # Variable para controlar si estamos esperando el comando `ls`
 
 func _ready():
 	history.bbcode_enabled = true
@@ -65,23 +66,29 @@ func init_structure():
 			dir.make_dir("home/usuario1/Descargas")
 			dir.make_dir("home/usuario1/Escritorio")
 
-
 func _input(event):
 	if event is InputEventKey and event.pressed:
+		# Si el panel nano está visible y el editor tiene el foco, ignoramos otros eventos
 		if nano_panel.visible and editor.has_focus():
 			return
+
+		# Si el popup de misión 2 está visible, lo ocultamos al presionar Enter
 		if mision2_popup.visible and event.keycode == KEY_ENTER:
 			mision2_popup.visible = false
 			return
 
-		if dialog_active and event.keycode == KEY_ENTER:
-			advance_dialog()  # Avanzar al siguiente diálogo
-			return
+		# Si el sistema de diálogo está activo, procesamos el avance del diálogo
+		if dialog_active:
+			if event.keycode == KEY_ENTER:
+				advance_dialog()  # Avanzar al siguiente diálogo
+				return
 
+		# Si el panel nano está visible, evitamos procesar comandos mientras estás en nano
 		if nano_panel.visible:
 			if event.keycode == KEY_ENTER:
-				return  # Evita procesar comandos mientras estás en nano
+				return
 
+		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
 			process_command(current_command.strip_edges())
 			current_command = ""  # Limpiamos el comando actual después de procesarlo
@@ -128,9 +135,10 @@ func process_command(command: String):
 		if DirAccess.dir_exists_absolute(full_path):
 			current_path = new_path
 
-			# Verificar si estamos en el directorio correcto para iniciar el diálogo
+			# Activar el estado de espera si estamos en el directorio correcto
 			if current_path == "/home/usuario1/Documents" and not mision2_completada:
-				start_dialog(mission2_dialogs)  # Iniciar el diálogo
+				esperando_ls = true
+				start_dialog(mission2_dialogs)  # Iniciar el primer diálogo
 		else:
 			output = "No existe el directorio: " + target
 
@@ -143,10 +151,11 @@ func process_command(command: String):
 			output = "  ".join(dirs + files)
 
 			# Verificar si el jugador ha listado el archivo correcto
-			if current_path == "/home/usuario1/Documents" and not mision2_completada:
-				# Esperar a que se actualice el history antes de avanzar diálogo
-				await get_tree().create_timer(0.1).timeout
-				advance_dialog()
+			if current_path == "/home/usuario1/Documents" and esperando_ls and not mision2_completada:
+				if "IPS_El_Bohío.txt" in files:  # Verificar si el archivo está presente
+					start_dialog(mission2_dialogs2)  # Iniciar el segundo diálogo
+					mision2_completada = true
+					esperando_ls = false
 		else:
 			output = "No se pudo abrir el directorio."
 
@@ -222,8 +231,13 @@ func process_command(command: String):
 
 	elif command == "":
 		pass
+
 	else:
-		output = "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]})
+		# Validar si estamos esperando el comando `ls`
+		if esperando_ls:
+			output = "Ese comando no es correcto. Prueba con ls."
+		else:
+			output = "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]})
 
 	# Agregar la salida del comando al historial **antes** de agregar el prompt para el siguiente comando
 	if output != "":
