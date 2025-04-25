@@ -18,7 +18,6 @@ var current_path = "/"  # Ruta relativa dentro de ubuntu_sim
 const BASE_PATH = "user://ubuntu_sim"  # Ruta real base
 var current_file_being_edited = ""
 var mision2_completada = false
-
 const USER_COLOR = "[color=green]usuario@usuario[/color]"
 const PROMPT_BASE = "$"
 var prompt_text = ""
@@ -27,13 +26,29 @@ var history_text = ""  # Variable para almacenar todo el texto de la consola
 # Variables para el sistema de diálogo
 var dialog_active = false
 var current_dialog_index = 0
+
+# Diálogos de la misión 2
 var mission2_dialogs = [
-	"Excelente, ya te encuentras en el directorio donde está el archivo. \nAhora falta listarlo para asegurarnos que se encuentra ahí. \nPara ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
+	"Excelente, ya te encuentras en el directorio donde está el archivo.\n" +
+	"Ahora falta listarlo para asegurarnos que se encuentra ahí.\n" +
+	"Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
 ]
+
 var mission2_dialogs2 = [
-	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío.txt`."
+	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío.txt`.\n" +
+	"Ahora falta un paso más que es ver el contenido de dicho fichero.\n" +
+	"Para ello vas a usar el comando cat y seguidamente el nombre del fichero,\n" +
+	"por ejemplo: cat IPS_El_Bohío.txt ¡Vamos, usa a ese gatito!"
 ]
+
+var mission2_dialogs3 = [
+	"Puedes ver que la ip del departamento de ventas es 192.168.10.10 y su puerta de enlace es 192.168.10.1.\n" +
+	"Su puerta de enlace es el router desde donde le llega la conexión a internet.\n" +
+	"Usa el comando ping 192.168.10.10 del ordenador del departamento de ventas para ver si funciona."
+]
+
 var esperando_ls = false  # Variable para controlar si estamos esperando el comando `ls`
+var archivo_listado = false  # Indica si el jugador ha listado los archivos con 'ls'
 
 func _ready():
 	history.bbcode_enabled = true
@@ -42,7 +57,6 @@ func _ready():
 	dialog_box.visible = false  # Inicializar el diálogo oculto
 	init_structure()
 	show_prompt()
-
 	save_button.pressed.connect(_on_save_button_pressed)
 
 # Actualiza el prompt para no perder la visualización
@@ -134,7 +148,11 @@ func process_command(command: String):
 		if DirAccess.dir_exists_absolute(full_path):
 			current_path = new_path
 
-			# Activar el estado de espera si estamos en el directorio correcto
+			# Reiniciar variables de control al cambiar de directorio
+			archivo_listado = false
+			esperando_ls = false
+
+			# Verificar si estamos en el directorio correcto para iniciar el diálogo
 			if current_path == "/home/usuario1/Documents" and not mision2_completada:
 				esperando_ls = true
 				start_dialog(mission2_dialogs)  # Iniciar el primer diálogo
@@ -151,12 +169,33 @@ func process_command(command: String):
 
 			# Verificar si el jugador ha listado el archivo correcto
 			if current_path == "/home/usuario1/Documents" and esperando_ls and not mision2_completada:
+				archivo_listado = true  # Marcar que el jugador ha listado los archivos
 				if "IPS_El_Bohío.txt" in files:  # Verificar si el archivo está presente
 					start_dialog(mission2_dialogs2)  # Iniciar el segundo diálogo
 					mision2_completada = true
 					esperando_ls = false
 		else:
 			output = "No se pudo abrir el directorio."
+
+	elif command.begins_with("cat "):
+		var filename = command.substr(4).strip_edges()  # Extraer el nombre del archivo
+		if filename == "":
+			output = "Error: Debes proporcionar el nombre de un archivo."
+		else:
+			var file_path = get_full_path() + "/" + filename
+			if FileAccess.file_exists(file_path):
+				var file = FileAccess.open(file_path, FileAccess.READ)
+				if file:
+					output = file.get_as_text()  # Leer el contenido del archivo
+					file.close()
+
+					# Mostrar el tercer diálogo si el jugador ha listado los archivos previamente
+					if archivo_listado and filename == "IPS_El_Bohío.txt":
+						start_dialog(mission2_dialogs3)  # Iniciar el tercer diálogo
+				else:
+					output = "Error: No se pudo abrir el archivo."
+			else:
+				output = "Error: El archivo '" + filename + "' no existe."
 
 	elif command.begins_with("mkdir "):
 		var target = command.substr(6).strip_edges()
@@ -220,22 +259,6 @@ func process_command(command: String):
 		else:
 			output = "rm: no se puede eliminar '" + target + "': No existe tal archivo o directorio"
 
-	elif command.begins_with("cat "):
-		var filename = command.substr(4).strip_edges()  # Extraer el nombre del archivo
-		if filename == "":
-			output = "Error: Debes proporcionar el nombre de un archivo."
-		else:
-			var file_path = get_full_path() + "/" + filename
-			if FileAccess.file_exists(file_path):
-				var file = FileAccess.open(file_path, FileAccess.READ)
-				if file:
-					output = file.get_as_text()  # Leer el contenido del archivo
-					file.close()
-				else:
-					output = "Error: No se pudo abrir el archivo."
-			else:
-				output = "Error: El archivo '" + filename + "' no existe."
-
 	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
@@ -289,7 +312,6 @@ func advance_dialog():
 			show_dialog()
 		else:
 			close_dialog()
-			mision2_completada = true  # Marcar la misión como completada
 
 func close_dialog():
 	dialog_active = false
