@@ -27,7 +27,7 @@ var history_text = ""  # Variable para almacenar todo el texto de la consola
 var dialog_active = false
 var current_dialog_index = 0
 
-# Diálogos de la misión 2
+# Diálogos de la misión
 var mission2_dialogs = [
 	"Excelente, ya te encuentras en el directorio donde está el archivo.\n" +
 	"Ahora falta listarlo para asegurarnos que se encuentra ahí.\n" +
@@ -36,19 +36,28 @@ var mission2_dialogs = [
 
 var mission2_dialogs2 = [
 	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío.txt`.\n" +
-	"Ahora falta un paso más que es ver el contenido de dicho fichero.\n" +
-	"Para ello vas a usar el comando cat y seguidamente el nombre del fichero,\n" +
-	"por ejemplo: cat IPS_El_Bohío.txt ¡Vamos, usa a ese gatito!"
+	"Ahora falta un paso más: ver el contenido de dicho fichero.\n" +
+	"Para ello vas a usar el comando `cat` seguido del nombre del fichero,\n" +
+	"por ejemplo: `cat IPS_El_Bohío.txt`. ¡Vamos, usa a ese gatito!"
 ]
 
 var mission2_dialogs3 = [
-	"Puedes ver que la ip del departamento de ventas es 192.168.10.10 y su puerta de enlace es 192.168.10.1.\n" +
+	"Puedes ver que la IP del departamento de ventas es 192.168.10.10 y su puerta de enlace es 192.168.10.1.\n" +
 	"Su puerta de enlace es el router desde donde le llega la conexión a internet.\n" +
-	"Usa el comando ping 192.168.10.10 del ordenador del departamento de ventas para ver si funciona."
+	"Usa el comando `ping 192.168.10.10` del ordenador del departamento de ventas para ver si funciona."
 ]
 
-var esperando_ls = false  # Variable para controlar si estamos esperando el comando `ls`
-var archivo_listado = false  # Indica si el jugador ha listado los archivos con 'ls'
+# Variables para controlar el flujo de la misión
+var esperando_ls = false  # Esperando que el jugador use `ls`
+var archivo_listado = false  # Indica si el jugador ha listado los archivos
+var archivo_leido = false  # Indica si el jugador ha usado `cat` en el archivo
+
+# Variables para el comando ping
+var ping_timer: Timer = null
+var ping_active = false
+var ping_host = ""
+var ping_seq = 1
+var rtt_times = []
 
 func _ready():
 	history.bbcode_enabled = true
@@ -101,6 +110,30 @@ func _input(event):
 			if event.keycode == KEY_ENTER:
 				return
 
+		# Manejo del comando Ctrl+C para detener el ping
+		if event.keycode == KEY_C and event.ctrl_pressed and ping_active:
+			ping_active = false
+			if is_instance_valid(ping_timer):
+				ping_timer.queue_free()
+				ping_timer = null
+			var summary = "^C\n---" + ping_host + " ping statistics---\n"
+			summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
+
+			var min_time = rtt_times.min() if rtt_times.size() > 0 else 0.0
+			var max_time = rtt_times.max() if rtt_times.size() > 0 else 0.0
+
+			var avg_func = func(a, b): return a + b
+			var avg_time = rtt_times.reduce(avg_func) / rtt_times.size() if rtt_times.size() > 0 else 0.0
+
+			var variance_func = func(a, b): return a + pow(b - avg_time, 2)
+			var mdev = sqrt(rtt_times.reduce(variance_func, 0.0) / rtt_times.size()) if rtt_times.size() > 0 else 0.0
+
+			summary += "rtt min/avg/max/mdev=%.3f/%.3f/%.3f/%.3f ms\n" % [min_time, avg_time, max_time, mdev]
+			history_text += summary
+			history.text = history_text
+			show_prompt()
+			return
+
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
 			process_command(current_command.strip_edges())
@@ -148,12 +181,8 @@ func process_command(command: String):
 		if DirAccess.dir_exists_absolute(full_path):
 			current_path = new_path
 
-			# Reiniciar variables de control al cambiar de directorio
-			archivo_listado = false
-			esperando_ls = false
-
-			# Verificar si estamos en el directorio correcto para iniciar el diálogo
-			if current_path == "/home/usuario1/Documents" and not mision2_completada:
+			# Activar el estado de espera si estamos en el directorio correcto
+			if current_path == "/home/usuario1/Documents" and not archivo_listado:
 				esperando_ls = true
 				start_dialog(mission2_dialogs)  # Iniciar el primer diálogo
 		else:
@@ -168,17 +197,16 @@ func process_command(command: String):
 			output = "  ".join(dirs + files)
 
 			# Verificar si el jugador ha listado el archivo correcto
-			if current_path == "/home/usuario1/Documents" and esperando_ls and not mision2_completada:
-				archivo_listado = true  # Marcar que el jugador ha listado los archivos
+			if current_path == "/home/usuario1/Documents" and esperando_ls and not archivo_listado:
 				if "IPS_El_Bohío.txt" in files:  # Verificar si el archivo está presente
+					archivo_listado = true
 					start_dialog(mission2_dialogs2)  # Iniciar el segundo diálogo
-					mision2_completada = true
 					esperando_ls = false
 		else:
 			output = "No se pudo abrir el directorio."
 
 	elif command.begins_with("cat "):
-		var filename = command.substr(4).strip_edges()  # Extraer el nombre del archivo
+		var filename = command.substr(4).strip_edges()
 		if filename == "":
 			output = "Error: Debes proporcionar el nombre de un archivo."
 		else:
@@ -189,75 +217,34 @@ func process_command(command: String):
 					output = file.get_as_text()  # Leer el contenido del archivo
 					file.close()
 
-					# Mostrar el tercer diálogo si el jugador ha listado los archivos previamente
-					if archivo_listado and filename == "IPS_El_Bohío.txt":
+					# Mostrar el tercer diálogo si el jugador ha leído el archivo correcto
+					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
+						archivo_leido = true
 						start_dialog(mission2_dialogs3)  # Iniciar el tercer diálogo
 				else:
 					output = "Error: No se pudo abrir el archivo."
 			else:
 				output = "Error: El archivo '" + filename + "' no existe."
 
-	elif command.begins_with("mkdir "):
-		var target = command.substr(6).strip_edges()
-		var path = get_full_path() + "/" + target
-		if not DirAccess.dir_exists_absolute(path):
-			var dir = DirAccess.open(get_full_path())
-			if dir:
-				dir.make_dir(target)
-				output = "Directorio creado: " + target
+	elif command.begins_with("ping "):
+		var target = command.substr(5).strip_edges()
+		if target == "":
+			output = "Error: Debes proporcionar una dirección IP o nombre de host."
 		else:
-			output = "El directorio ya existe."
+			ping_host = target
+			ping_active = true
+			ping_seq = 1
+			rtt_times.clear()
 
-	elif command.begins_with("touch "):
-		var filename = command.substr(6).strip_edges()
-		var file_path = get_full_path() + "/" + filename
-		var file = FileAccess.open(file_path, FileAccess.WRITE)
-		if file:
-			output = "Archivo creado: " + filename
-			file.close()
-		else:
-			output = "No se pudo crear el archivo."
+			ping_timer = Timer.new()
+			ping_timer.wait_time = 1.0  # Intervalo de 1 segundo entre paquetes
+			ping_timer.one_shot = false
+			add_child(ping_timer)
+			ping_timer.timeout.connect(_on_ping_timer_timeout)
+			ping_timer.start()
 
-	elif command.begins_with("nano "):
-		var filename = command.substr(5).strip_edges()
-		var file_path = get_full_path() + "/" + filename
-		current_file_being_edited = file_path
-		var file = FileAccess.open(file_path, FileAccess.READ)
-		if file:
-			editor.text = file.get_as_text()
-			file.close()
-		else:
-			editor.text = ""
-		nano_panel.visible = true
-		history.release_focus()
-		editor.grab_focus()
-		output = "Editando " + filename + " (usa el botón para guardar y salir)"
-
-	elif command.begins_with("rm "):
-		var args = command.substr(3).strip_edges().split(" ")
-		var target = args[0]
-		var recursive = "-r" in args or "--recursive" in args
-		var full_path = get_full_path() + "/" + target
-		if DirAccess.dir_exists_absolute(full_path):
-			if recursive:
-				var dir = DirAccess.open(full_path)
-				if dir:
-					dir.remove(full_path)
-					output = "Directorio eliminado: " + target
-				else:
-					output = "No se pudo eliminar el directorio: " + target
-			else:
-				output = "rm: no se puede eliminar '" + target + "': Es un directorio. Usa -r para eliminar recursivamente."
-		elif FileAccess.file_exists(full_path):
-			var file = FileAccess.open(full_path, FileAccess.READ)
-			if file:
-				file.close()
-				DirAccess.remove_absolute(full_path)
-				output = "Archivo eliminado: " + target
-			else:
-				output = "No se pudo eliminar el archivo: " + target
-		else:
-			output = "rm: no se puede eliminar '" + target + "': No existe tal archivo o directorio"
+			history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
+			history.text = history_text
 
 	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
@@ -281,8 +268,17 @@ func process_command(command: String):
 	if output != "":
 		history_text += "\n" + output  # Agrega la salida del comando al historial
 		history.text = history_text  # Actualiza el texto de la consola
-
 	show_prompt()  # Muestra el prompt para el siguiente comando
+
+func _on_ping_timer_timeout():
+	if not ping_active:
+		return
+
+	var time = randf_range(0.020, 0.030)  # Simulación de tiempo de respuesta
+	rtt_times.append(time)
+	history_text += "64 bytes from " + ping_host + ": icmp_seq=" + str(ping_seq) + " ttl=64 time=%.3f ms\n" % time
+	history.text = history_text
+	ping_seq += 1
 
 func _on_save_button_pressed():
 	var file = FileAccess.open(current_file_being_edited, FileAccess.WRITE)
