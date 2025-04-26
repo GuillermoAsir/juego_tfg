@@ -28,6 +28,11 @@ var history_text = ""  # Variable para almacenar todo el texto de la consola
 var dialog_active = false
 var current_dialog_index = 0
 
+# Variables para controlar lo que se ha introducido por consola
+var comandos_introducidos: Array[String] = []
+var comando_actual = null
+
+
 # Diálogos de la misión
 var mission2_dialogs = [
 	"Excelente, ya te encuentras en el directorio donde está el archivo.\n" +
@@ -120,6 +125,37 @@ func _input(event):
 			if event.keycode == KEY_ENTER:
 				advance_dialog()  # Avanzar al siguiente diálogo
 				return
+				
+		if event.keycode == KEY_UP:
+			if comando_actual == null:
+				if comandos_introducidos.size() > 0:
+					comando_actual = 0
+				else:
+					return
+			elif comando_actual < comandos_introducidos.size() - 1:
+				comando_actual = comando_actual + 1
+			else:
+				return
+				
+			if comando_actual == null:
+				history.text = history_text
+			else:
+				history.text = history_text + comandos_introducidos[comando_actual]
+				current_command = comandos_introducidos[comando_actual]
+			return
+			
+		if event.keycode == KEY_DOWN:
+			if comando_actual != null:
+				if comando_actual == 0:
+					comando_actual = null
+					history.text = history_text
+				else:
+					comando_actual = comando_actual - 1
+					history.text = history_text + comandos_introducidos[comando_actual]
+					current_command = comandos_introducidos[comando_actual]
+				
+			else:
+				return
 
 		# Manejo del comando Ctrl+C para detener el ping
 		if event.keycode == KEY_C and event.ctrl_pressed and ping_active:
@@ -143,7 +179,11 @@ func _input(event):
 
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
-			process_command(current_command.strip_edges())
+			var comando = current_command.strip_edges()
+			if comando != "":
+				comandos_introducidos.insert(0, comando)
+			comando_actual = null
+			process_command(comando)
 			current_command = ""  # Limpiamos el comando actual después de procesarlo
 		elif event.keycode == KEY_BACKSPACE:
 			if current_command.length() > 0:
