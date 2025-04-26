@@ -237,8 +237,14 @@ func process_command(command: String):
 		if target == "":
 			output = "Error: Debes proporcionar una dirección IP o nombre de host."
 		else:
+			ping_host = target
 			if is_valid_ip(target) or resolve_hostname(target):
-				ping_host = target
+				if mision_actual == 4:
+					if ping_host == "192.168.10.10":
+						start_dialog(mission2_dialogs4)  # Iniciar el cuarto diálogo
+						mision_actual = 5
+					else:# Mensaje de
+						start_dialog(mission2_dialogs5) 
 				ping_active = true
 				ping_seq = 1
 				rtt_times.clear()
@@ -293,17 +299,8 @@ func _on_ping_timer_timeout():
 	history.text = history_text
 	ping_seq += 1
 		 #Si el jugador detiene el ping con Ctrl+C, mostrar el cuarto diálogo
-	if not ping_active and ping_host == "192.168.10.10" and not ping_completado:
+	if not ping_active:
 		ping_completado = true
-		if mision_actual == 4:
-			print("Iniciando diálogo 4")  # Mensaje de depuración
-			start_dialog(mission2_dialogs4)  # Iniciar el cuarto diálogo
-			mision_actual = 5
-		else:
-			print("Condición fallida: Misión actual no es 4")  # Mensaje de depuración
-	else:
-		print("Condición fallida: Alguna otra razón")  # Mensaje de depuración
-		start_dialog(mission2_dialogs5)
 
 func _on_save_button_pressed():
 	var file = FileAccess.open(current_file_being_edited, FileAccess.WRITE)
