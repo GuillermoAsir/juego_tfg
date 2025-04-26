@@ -13,6 +13,7 @@ extends Control
 @onready var dialog_content = $ContainerDialogo/DialogBox/DialogContent  # Texto del diálogo
 @onready var dialog_arrow = $ContainerDialogo/DialogBox/DialogArrow  # Indicador gráfico (opcional)
 
+# Variables principales
 var current_command = ""
 var current_path = "/"  # Ruta relativa dentro de ubuntu_sim
 const BASE_PATH = "user://ubuntu_sim"  # Ruta real base
@@ -44,7 +45,8 @@ var mission2_dialogs2 = [
 var mission2_dialogs3 = [
 	"Puedes ver que la IP del departamento de ventas es 192.168.10.10 y su puerta de enlace es 192.168.10.1.\n" +
 	"Su puerta de enlace es el router desde donde le llega la conexión a internet.\n" +
-	"Usa el comando `ping 192.168.10.10` del ordenador del departamento de ventas para ver si funciona."
+	"Usa el comando `ping 192.168.10.10` del ordenador del departamento de ventas para ver si funciona.\n" +
+	"Recuerda si quieres que el comando se detenga pulsa las teclas Ctrl + C"
 ]
 
 # Variables para controlar el flujo de la misión
@@ -72,7 +74,8 @@ func _ready():
 func show_prompt():
 	var path_color = "[color=skyblue]" + current_path + "[/color]"
 	prompt_text = "\n" + USER_COLOR + ":" + path_color + PROMPT_BASE + " "
-	history_text += prompt_text  # Agrega el prompt al historial de texto
+	if not ping_active:
+		history_text += prompt_text  # Agrega el prompt al historial de texto solo si no estamos en un ping activo
 	history.text = history_text  # Actualiza el texto de la consola
 
 func init_structure():
@@ -105,11 +108,6 @@ func _input(event):
 				advance_dialog()  # Avanzar al siguiente diálogo
 				return
 
-		# Si el panel nano está visible, evitamos procesar comandos mientras estás en nano
-		if nano_panel.visible:
-			if event.keycode == KEY_ENTER:
-				return
-
 		# Manejo del comando Ctrl+C para detener el ping
 		if event.keycode == KEY_C and event.ctrl_pressed and ping_active:
 			ping_active = false
@@ -118,16 +116,12 @@ func _input(event):
 				ping_timer = null
 			var summary = "^C\n---" + ping_host + " ping statistics---\n"
 			summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
-
 			var min_time = rtt_times.min() if rtt_times.size() > 0 else 0.0
 			var max_time = rtt_times.max() if rtt_times.size() > 0 else 0.0
-
 			var avg_func = func(a, b): return a + b
 			var avg_time = rtt_times.reduce(avg_func) / rtt_times.size() if rtt_times.size() > 0 else 0.0
-
 			var variance_func = func(a, b): return a + pow(b - avg_time, 2)
 			var mdev = sqrt(rtt_times.reduce(variance_func, 0.0) / rtt_times.size()) if rtt_times.size() > 0 else 0.0
-
 			summary += "rtt min/avg/max/mdev=%.3f/%.3f/%.3f/%.3f ms\n" % [min_time, avg_time, max_time, mdev]
 			history_text += summary
 			history.text = history_text
@@ -157,14 +151,11 @@ func get_full_path():
 
 func process_command(command: String):
 	var output := ""
-
-	# <-- AÑADIDO PARA GUARDAR COMANDO EN HISTORIAL -->
 	history_text += command
 
 	if command.begins_with("cd "):
 		var target = command.substr(3).strip_edges()
 		var new_path = current_path
-
 		if target == "..":
 			if current_path != "/":
 				var parts = current_path.split("/")
@@ -176,11 +167,9 @@ func process_command(command: String):
 			new_path = "/"
 		else:
 			new_path = target if target.begins_with("/") else current_path.rstrip("/") + "/" + target
-
 		var full_path = BASE_PATH + new_path
 		if DirAccess.dir_exists_absolute(full_path):
 			current_path = new_path
-
 			# Activar el estado de espera si estamos en el directorio correcto
 			if current_path == "/home/usuario1/Documents" and not archivo_listado:
 				esperando_ls = true
@@ -194,8 +183,7 @@ func process_command(command: String):
 		if dir:
 			var dirs = dir.get_directories()
 			var files = dir.get_files()
-			output = "  ".join(dirs + files)
-
+			output = " ".join(dirs + files)
 			# Verificar si el jugador ha listado el archivo correcto
 			if current_path == "/home/usuario1/Documents" and esperando_ls and not archivo_listado:
 				if "IPS_El_Bohío.txt" in files:  # Verificar si el archivo está presente
@@ -216,7 +204,6 @@ func process_command(command: String):
 				if file:
 					output = file.get_as_text()  # Leer el contenido del archivo
 					file.close()
-
 					# Mostrar el tercer diálogo si el jugador ha leído el archivo correcto
 					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
 						archivo_leido = true
@@ -231,20 +218,23 @@ func process_command(command: String):
 		if target == "":
 			output = "Error: Debes proporcionar una dirección IP o nombre de host."
 		else:
-			ping_host = target
-			ping_active = true
-			ping_seq = 1
-			rtt_times.clear()
+			if is_valid_ip(target) or resolve_hostname(target):
+				ping_host = target
+				ping_active = true
+				ping_seq = 1
+				rtt_times.clear()
+				ping_timer = Timer.new()
+				ping_timer.wait_time = 1.0  # Intervalo de 1 segundo entre paquetes
+				ping_timer.one_shot = false
+				add_child(ping_timer)
+				ping_timer.timeout.connect(_on_ping_timer_timeout)
+				ping_timer.start()
 
-			ping_timer = Timer.new()
-			ping_timer.wait_time = 1.0  # Intervalo de 1 segundo entre paquetes
-			ping_timer.one_shot = false
-			add_child(ping_timer)
-			ping_timer.timeout.connect(_on_ping_timer_timeout)
-			ping_timer.start()
-
-			history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
-			history.text = history_text
+				history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
+				history.text = history_text
+				show_prompt()  # Mantener el prompt visible
+			else:
+				output = "ping: " + target + ": Temporary failure in name resolution"
 
 	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
@@ -313,3 +303,26 @@ func close_dialog():
 	dialog_active = false
 	dialog_box.visible = false
 	dialog_content.text = ""
+
+# Funciones de validación para el comando ping
+func is_valid_ip(ip: String) -> bool:
+	var parts = ip.split(".")
+	if parts.size() != 4:
+		return false
+	for part in parts:
+		if not is_only_digits(part):
+			return false
+		var num = int(part)
+		if num < 0 or num > 255:
+			return false
+	return true
+
+func is_only_digits(s: String) -> bool:
+	for c in s:
+		if c < '0' or c > '9':
+			return false
+	return true
+
+func resolve_hostname(hostname: String) -> bool:
+	# Simulación simple de resolución de nombres
+	return hostname == "localhost" or hostname.ends_with(".com")
