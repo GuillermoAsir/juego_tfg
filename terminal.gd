@@ -103,10 +103,12 @@ func init_structure():
 			dir.make_dir("home/usuario1/Documents")
 			dir.make_dir("home/usuario1/Descargas")
 			dir.make_dir("home/usuario1/Escritorio")
+			
+			
 
 func _input(event):
 	if event is InputEventKey and event.pressed:
-		# Si el panel nano está visible y el editor tiene el foco, ignoramos otros eventos
+		# Ignorar eventos si el panel nano está visible y el editor tiene el foco
 		if nano_panel.visible and editor.has_focus():
 			return
 
@@ -115,46 +117,62 @@ func _input(event):
 			mision2_popup.visible = false
 			return
 
-		# Si el sistema de diálogo está activo, procesamos el avance del diálogo
+		# Si el sistema de diálogo está activo, avanzamos con Enter
 		if dialog_active:
 			if event.keycode == KEY_ENTER:
-				advance_dialog()  # Avanzar al siguiente diálogo
+				advance_dialog()
 				return
 
-		# Manejo del comando Ctrl+C para detener el ping
-		if event.keycode == KEY_C and event.ctrl_pressed and ping_active:
-			ping_active = false
-			if is_instance_valid(ping_timer):
-				ping_timer.queue_free()
-				ping_timer = null
-			var summary = "^C\n---" + ping_host + " ping statistics---\n"
-			summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
-			var min_time = rtt_times.min() if rtt_times.size() > 0 else 0.0
-			var max_time = rtt_times.max() if rtt_times.size() > 0 else 0.0
-			var avg_func = func(a, b): return a + b
-			var avg_time = rtt_times.reduce(avg_func) / rtt_times.size() if rtt_times.size() > 0 else 0.0
-			var variance_func = func(a, b): return a + pow(b - avg_time, 2)
-			var mdev = sqrt(rtt_times.reduce(variance_func, 0.0) / rtt_times.size()) if rtt_times.size() > 0 else 0.0
-			summary += "rtt min/avg/max/mdev=%.3f/%.3f/%.3f/%.3f ms\n" % [min_time, avg_time, max_time, mdev]
-			history_text += summary
-			history.text = history_text
-			show_prompt()
+		# Autocompletado con Tab
+		if event.keycode == KEY_TAB:
+			autocomplete_command()
 			return
 
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
 			process_command(current_command.strip_edges())
-			current_command = ""  # Limpiamos el comando actual después de procesarlo
+			current_command = ""
 		elif event.keycode == KEY_BACKSPACE:
 			if current_command.length() > 0:
-				# Borramos un carácter de current_command
 				current_command = current_command.left(current_command.length() - 1)
-				# También eliminamos el último carácter del comando sin afectar el prompt
 				history.text = history_text + current_command
 		elif event.unicode > 0:
 			var char_input = char(event.unicode)
 			current_command += char_input
 			history.text = history_text + current_command
+func autocomplete_command():
+	# Dividir el comando actual en partes (por ejemplo, "cd Documents")
+	var parts = current_command.strip_edges().split(" ")
+	var last_part = parts[-1]  # Última parte del comando (lo que se está escribiendo)
+
+	# Obtener el directorio actual
+	var full_path = get_full_path()
+	var dir = DirAccess.open(full_path)
+	if not dir:
+		return
+
+	# Obtener archivos y carpetas en el directorio actual
+	var dirs = dir.get_directories()
+	var files = dir.get_files()
+	var all_items = dirs + files
+
+	# Filtrar coincidencias basadas en la última parte del comando
+	var matches = []
+	for item in all_items:
+		if item.begins_with(last_part):
+			matches.append(item)
+
+	# Manejar las coincidencias
+	if matches.size() == 1:
+		# Si hay una única coincidencia, autocompletar
+		var completed = matches[0]
+		current_command = " ".join(parts.slice(0, -1)) + " " + completed
+		history.text = history_text + current_command
+	elif matches.size() > 1:
+		# Si hay múltiples coincidencias, mostrar sugerencias
+		var suggestions = "\nSugerencias: " + ", ".join(matches)
+		history_text += suggestions
+		history.text = history_text
 
 func get_full_path():
 	var normalized = current_path
