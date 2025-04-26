@@ -45,8 +45,7 @@ var mission2_dialogs2 = [
 var mission2_dialogs3 = [
 	"Puedes ver que la IP del departamento de ventas es 192.168.10.10 y su puerta de enlace es 192.168.10.1.\n" +
 	"Su puerta de enlace es el router desde donde le llega la conexión a internet.\n" +
-	"Usa el comando `ping 192.168.10.10` del ordenador del departamento de ventas para ver si funciona.\n" +
-	"Recuerda si quieres que el comando se detenga pulsa las teclas Ctrl + C"
+	"Usa el comando `ping 192.168.10.10` del ordenador del departamento de ventas para ver si funciona."
 ]
 
 # Variables para controlar el flujo de la misión
@@ -61,6 +60,21 @@ var ping_host = ""
 var ping_seq = 1
 var rtt_times = []
 
+# Variables para el servicio Apache
+var apache_status = "failed"  # Estado inicial del servicio Apache
+var sudo_password_entered = ""  # Almacena temporalmente la contraseña
+var waiting_for_sudo_password = false  # Indica si estamos esperando la contraseña
+
+func _on_save_button_pressed():
+	var file = FileAccess.open(current_file_being_edited, FileAccess.WRITE)
+	if file:
+		file.store_string(editor.text)
+		file.close()
+	nano_panel.visible = false
+	history_text += "\nArchivo guardado: " + current_file_being_edited
+	history.text = history_text
+	show_prompt()
+	
 func _ready():
 	history.bbcode_enabled = true
 	nano_panel.visible = false
@@ -74,8 +88,8 @@ func _ready():
 func show_prompt():
 	var path_color = "[color=skyblue]" + current_path + "[/color]"
 	prompt_text = "\n" + USER_COLOR + ":" + path_color + PROMPT_BASE + " "
-	if not ping_active:
-		history_text += prompt_text  # Agrega el prompt al historial de texto solo si no estamos en un ping activo
+	if not ping_active and not waiting_for_sudo_password:
+		history_text += prompt_text  # Agrega el prompt al historial de texto
 	history.text = history_text  # Actualiza el texto de la consola
 
 func init_structure():
@@ -114,7 +128,7 @@ func _input(event):
 			if is_instance_valid(ping_timer):
 				ping_timer.queue_free()
 				ping_timer = null
-			var summary = "^C\n---" + ping_host + " ping statistics---\n"
+			var summary = "^C\n--- " + ping_host + " ping statistics ---\n"
 			summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
 			var min_time = rtt_times.min() if rtt_times.size() > 0 else 0.0
 			var max_time = rtt_times.max() if rtt_times.size() > 0 else 0.0
@@ -126,6 +140,25 @@ func _input(event):
 			history_text += summary
 			history.text = history_text
 			show_prompt()
+			return
+
+		# Procesar entrada para la contraseña de sudo
+		if waiting_for_sudo_password:
+			if event.keycode == KEY_ENTER:
+				if sudo_password_entered == "1234":  # Contraseña válida
+					waiting_for_sudo_password = false
+					process_sudo_command(current_command.strip_edges())
+					current_command = ""
+				else:
+					sudo_password_entered = ""
+					history_text += "\nsudo: contraseña incorrecta\n"
+					history.text = history_text
+					show_prompt()
+			elif event.keycode == KEY_BACKSPACE:
+				if sudo_password_entered.length() > 0:
+					sudo_password_entered = sudo_password_entered.left(sudo_password_entered.length() - 1)
+			elif event.unicode > 0:
+				sudo_password_entered += char(event.unicode)
 			return
 
 		# Procesar comandos normales
@@ -150,19 +183,38 @@ func get_full_path():
 	return BASE_PATH + normalized
 
 func process_command(command: String):
-	var output := ""
-	history_text += command
+	if command.begins_with("sudo"):
+		# Solicitar contraseña para comandos sudo
+		waiting_for_sudo_password = true
+		history_text += "[sudo] contraseña para usuario: "
+		history.text = history_text
+		return
 
-	if command.begins_with("cd "):
+	if command == "sudo systemctl status apache2":
+		if apache_status == "failed":
+			history_text += format_apache_error_message()
+		else:
+			history_text += format_apache_active_message()
+	elif command == "sudo systemctl restart apache2":
+		if apache_status == "failed":
+			apache_status = "active"
+			history_text += "Restarting apache2.service...\nApache restarted successfully.\n"
+		else:
+			history_text += "Apache service is already running.\n"
+	elif command == "systemctl status apache2":
+		history_text += "Failed to connect to bus: Permission denied\nUse 'sudo' to gain elevated privileges.\n"
+	elif command.begins_with("cd"):
 		var target = command.substr(3).strip_edges()
 		var new_path = current_path
 		if target == "..":
 			if current_path != "/":
-				var parts = current_path.split("/")
-				parts = parts.filter(func(p): return p != "")
+				var parts = []
+				for p in current_path.split("/"):
+					if p != "":
+						parts.append(p)
 				if parts.size() > 0:
 					parts.remove_at(parts.size() - 1)
-					new_path = "/" + "/".join(parts) if parts.size() > 0 else "/"
+				new_path = "/" + "/".join(parts) if parts.size() > 0 else "/"
 		elif target == "/":
 			new_path = "/"
 		else:
@@ -175,48 +227,47 @@ func process_command(command: String):
 				esperando_ls = true
 				start_dialog(mission2_dialogs)  # Iniciar el primer diálogo
 		else:
-			output = "No existe el directorio: " + target
-
+			history_text += "No existe el directorio: " + target + "\n"
 	elif command == "ls":
 		var full_path = get_full_path()
 		var dir = DirAccess.open(full_path)
 		if dir:
 			var dirs = dir.get_directories()
 			var files = dir.get_files()
-			output = " ".join(dirs + files)
+			history_text += " ".join(dirs + files) + "\n"
 			# Verificar si el jugador ha listado el archivo correcto
 			if current_path == "/home/usuario1/Documents" and esperando_ls and not archivo_listado:
 				if "IPS_El_Bohío.txt" in files:  # Verificar si el archivo está presente
 					archivo_listado = true
 					start_dialog(mission2_dialogs2)  # Iniciar el segundo diálogo
 					esperando_ls = false
+				else:
+					history_text += "No se pudo abrir el directorio.\n"
 		else:
-			output = "No se pudo abrir el directorio."
-
-	elif command.begins_with("cat "):
+			history_text += "No se pudo abrir el directorio.\n"
+	elif command.begins_with("cat"):
 		var filename = command.substr(4).strip_edges()
 		if filename == "":
-			output = "Error: Debes proporcionar el nombre de un archivo."
+			history_text += "Error: Debes proporcionar el nombre de un archivo.\n"
 		else:
 			var file_path = get_full_path() + "/" + filename
 			if FileAccess.file_exists(file_path):
 				var file = FileAccess.open(file_path, FileAccess.READ)
 				if file:
-					output = file.get_as_text()  # Leer el contenido del archivo
+					history_text += file.get_as_text() + "\n"  # Leer el contenido del archivo
 					file.close()
 					# Mostrar el tercer diálogo si el jugador ha leído el archivo correcto
 					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
 						archivo_leido = true
 						start_dialog(mission2_dialogs3)  # Iniciar el tercer diálogo
 				else:
-					output = "Error: No se pudo abrir el archivo."
+					history_text += "Error: No se pudo abrir el archivo.\n"
 			else:
-				output = "Error: El archivo '" + filename + "' no existe."
-
-	elif command.begins_with("ping "):
+				history_text += "Error: El archivo '" + filename + "' no existe.\n"
+	elif command.begins_with("ping"):
 		var target = command.substr(5).strip_edges()
 		if target == "":
-			output = "Error: Debes proporcionar una dirección IP o nombre de host."
+			history_text += "Error: Debes proporcionar una dirección IP o nombre de host.\n"
 		else:
 			if is_valid_ip(target) or resolve_hostname(target):
 				ping_host = target
@@ -229,57 +280,78 @@ func process_command(command: String):
 				add_child(ping_timer)
 				ping_timer.timeout.connect(_on_ping_timer_timeout)
 				ping_timer.start()
-
 				history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
 				history.text = history_text
-				show_prompt()  # Mantener el prompt visible
+				show_prompt()
 			else:
-				output = "ping: " + target + ": Temporary failure in name resolution"
-
+				history_text += "ping: " + target + ": Temporary failure in name resolution\n"
 	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
-
 	elif command == "help":
-		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
-
-	elif command == "":
-		pass
-
+		history_text += "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help\n"
 	else:
-		# Validar si estamos esperando el comando `ls`
-		if esperando_ls:
-			output = "Ese comando no es correcto. Prueba con ls."
-		else:
-			output = "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]})
+		history_text += "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]}) + "\n"
 
 	# Agregar la salida del comando al historial **antes** de agregar el prompt para el siguiente comando
-	if output != "":
-		history_text += "\n" + output  # Agrega la salida del comando al historial
-		history.text = history_text  # Actualiza el texto de la consola
-	show_prompt()  # Muestra el prompt para el siguiente comando
-
-func _on_ping_timer_timeout():
-	if not ping_active:
-		return
-
-	var time = randf_range(0.020, 0.030)  # Simulación de tiempo de respuesta
-	rtt_times.append(time)
-	history_text += "64 bytes from " + ping_host + ": icmp_seq=" + str(ping_seq) + " ttl=64 time=%.3f ms\n" % time
 	history.text = history_text
-	ping_seq += 1
+	show_prompt()
 
-func _on_save_button_pressed():
-	var file = FileAccess.open(current_file_being_edited, FileAccess.WRITE)
-	if file:
-		file.store_string(editor.text)
-		file.close()
-		nano_panel.visible = false
-		history_text += "\nArchivo guardado: " + current_file_being_edited
-		history.text = history_text
-		show_prompt()
+func process_sudo_command(command: String):
+	if command == "sudo systemctl status apache2":
+		if apache_status == "failed":
+			history_text += format_apache_error_message()
+		else:
+			history_text += format_apache_active_message()
+	elif command == "sudo systemctl restart apache2":
+		if apache_status == "failed":
+			apache_status = "active"
+			history_text += "Restarting apache2.service...\nApache restarted successfully.\n"
+		else:
+			history_text += "Apache service is already running.\n"
+	else:
+		history_text += "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]}) + "\n"
+	history.text = history_text
+	show_prompt()
 
+func format_apache_error_message() -> String:
+	var timestamp = get_formatted_datetime()
+	return """
+[%s] ● apache2.service - The Apache HTTP Server
+   Loaded: loaded (/lib/systemd/system/apache2.service; enabled; vendor preset: enabled)
+  Drop-In: /lib/systemd/system/apache2.service.d
+		   └─apache2-systemd.conf
+   Active: failed (Result: exit-code) since Wed 2019-11-20 22:07:23 +08; 10s ago
+  Process: 21191 ExecStart=/usr/sbin/apachectl start (code=exited, status=1/FAILURE)
+
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 127.0.1.1. Set the 'ServerName' directive globally to suppress this message
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: (98)Address already in use: AH00072: make_sock: could not bind to address [::]:80
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: (98)Address already in use: AH00072: make_sock: could not bind to address 0.0.0.0:80
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: no listening sockets available, shutting down
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: AH00015: Unable to open logs
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: Action 'start' failed.
+Nov 20 22:07:23 roy-UX430UNR apachectl[21191]: The Apache error log may have more information.
+Nov 20 22:07:23 roy-UX430UNR systemd[1]: apache2.service: Control process exited, code=exited status=1
+Nov 20 22:07:23 roy-UX430UNR systemd[1]: apache2.service: Failed with result 'exit-code'.
+Nov 20 22:07:23 roy-UX430UNR systemd[1]: Failed to start The Apache HTTP Server.
+""" % timestamp
+
+func format_apache_active_message() -> String:
+	var timestamp = get_formatted_datetime()
+	return """
+[%s] ● apache2.service - The Apache HTTP Server
+   Loaded: loaded (/lib/systemd/system/apache2.service; enabled; vendor preset: enabled)
+   Active: active (running) since ...
+""" % timestamp
+
+# Función para obtener la fecha y hora formateadas
+func get_formatted_datetime() -> String:
+	var datetime = Time.get_datetime_dict_from_system()
+	return "%04d-%02d-%02d %02d:%02d:%02d" % [
+		datetime["year"], datetime["month"], datetime["day"],
+		datetime["hour"], datetime["minute"], datetime["second"]
+	]
 # Funciones para manejar el sistema de diálogo
 func start_dialog(dialogs: Array):
 	dialog_active = true
@@ -304,25 +376,26 @@ func close_dialog():
 	dialog_box.visible = false
 	dialog_content.text = ""
 
-# Funciones de validación para el comando ping
+# Función auxiliar para validar IPs
 func is_valid_ip(ip: String) -> bool:
 	var parts = ip.split(".")
 	if parts.size() != 4:
 		return false
 	for part in parts:
-		if not is_only_digits(part):
-			return false
-		var num = int(part)
-		if num < 0 or num > 255:
+		if not part.is_digit() or int(part) < 0 or int(part) > 255:
 			return false
 	return true
 
-func is_only_digits(s: String) -> bool:
-	for c in s:
-		if c < '0' or c > '9':
-			return false
-	return true
-
+# Función auxiliar para resolver nombres de host
 func resolve_hostname(hostname: String) -> bool:
-	# Simulación simple de resolución de nombres
-	return hostname == "localhost" or hostname.ends_with(".com")
+	# Implementa aquí la lógica para resolver nombres de host si es necesario
+	return hostname == "localhost"  # Ejemplo básico
+
+func _on_ping_timer_timeout():
+	if not ping_active:
+		return
+	var time = randf_range(0.020, 0.030)  # Simulación de tiempo de respuesta
+	rtt_times.append(time)
+	history_text += "64 bytes from " + ping_host + ": icmp_seq=" + str(ping_seq) + " ttl=64 time=%.3f ms\n" % time
+	history.text = history_text
+	ping_seq += 1
