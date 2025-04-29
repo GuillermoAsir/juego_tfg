@@ -131,33 +131,6 @@ func _input(event):
 				history.text = history_text + comandos_introducidos[comando_actual]
 				current_command = comandos_introducidos[comando_actual]
 			return
-<<<<<<< HEAD
-=======
-
-		# Si el sistema de diálogo está activo, procesamos el avance del diálogo
-		if dialog_active:
-			if event.keycode == KEY_ENTER:
-				advance_dialog()  # Avanzar al siguiente diálogo
-				return
-				
-		if event.keycode == KEY_UP:
-			if comando_actual == null:
-				if comandos_introducidos.size() > 0:
-					comando_actual = 0
-				else:
-					return
-			elif comando_actual < comandos_introducidos.size() - 1:
-				comando_actual = comando_actual + 1
-			else:
-				return
-				
-			if comando_actual == null:
-				history.text = history_text
-			else:
-				history.text = history_text + comandos_introducidos[comando_actual]
-				current_command = comandos_introducidos[comando_actual]
-			return
->>>>>>> origin/main
 			
 		if event.keycode == KEY_DOWN:
 			if comando_actual != null:
@@ -192,15 +165,17 @@ func _input(event):
 			show_prompt()
 			return
 
+# Autocompletado con Tab
+		if event.keycode == KEY_TAB:
+			autocomplete_command()
+			return
+
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
-<<<<<<< HEAD
 			# Si el sistema de diálogo está activo, procesamos el avance del diálogo
 			if dialog_active:
 				advance_dialog() 
 				
-=======
->>>>>>> origin/main
 			var comando = current_command.strip_edges()
 			if comando != "":
 				comandos_introducidos.insert(0, comando)
@@ -217,50 +192,6 @@ func _input(event):
 			var char_input = char(event.unicode)
 			current_command += char_input
 			history.text = history_text + current_command
-<<<<<<< HEAD
-					# Autocompletado con Tab
-		if event.keycode == KEY_TAB:
-			autocomplete_command()
-			return
-
-func autocomplete_command():
-	# Dividir el comando actual en partes (por ejemplo, "cd Documents")
-	var parts = current_command.strip_edges().split(" ")
-	var last_part = parts[-1]  # Última parte del comando (lo que se está escribiendo)
-
-	# Obtener el directorio actual
-	var full_path = get_full_path()
-	var dir = DirAccess.open(full_path)
-	if not dir:
-		return
-
-	# Obtener archivos y carpetas en el directorio actual
-	var dirs = dir.get_directories()
-	var files = dir.get_files()
-	var all_items = dirs + files
-
-	# Filtrar coincidencias basadas en la última parte del comando
-	var matches = []
-	for item in all_items:
-		if item.begins_with(last_part):
-			matches.append(item)
-
-	# Manejar las coincidencias
-	if matches.size() == 1:
-		# Si hay una única coincidencia, autocompletar
-		var completed = matches[0]
-		current_command = " ".join(parts.slice(0, -1)) + " " + completed
-		history.text = history_text + current_command
-	elif matches.size() > 1:
-		# Si hay múltiples coincidencias, mostrar sugerencias
-		var suggestions = "\nSugerencias: " + ", ".join(matches)
-		history_text += suggestions
-		history.text = history_text
-=======
-		if event.keycode == KEY_TAB:
-			autocomplete_command()
-			return
->>>>>>> origin/main
 
 func get_full_path():
 	var normalized = current_path
@@ -299,7 +230,7 @@ func process_command(command: String):
 		else:
 			output = "No existe el directorio: " + target
 
-	elif command == "ls ":
+	elif command == "ls":
 		var full_path = get_full_path()
 		var dir = DirAccess.open(full_path)
 		if dir:
@@ -372,12 +303,12 @@ func process_command(command: String):
 			else:
 				output = "ping: " + target + ": Temporary failure in name resolution"
 
-	elif command == "clear ":
+	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
 
-	elif command == "help ":
+	elif command == "help":
 		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
 
 	elif command == "":
@@ -465,6 +396,7 @@ func is_only_digits(s: String) -> bool:
 func resolve_hostname(hostname: String) -> bool:
 	# Simulación simple de resolución de nombres
 	return hostname == "localhost" or hostname.ends_with(".com")
+
 func autocomplete_command():
 	# Dividir el comando actual en partes (por ejemplo, "cd Documents")
 	var parts = current_command.strip_edges().split(" ")
