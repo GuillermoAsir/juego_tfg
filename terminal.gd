@@ -58,6 +58,7 @@ var mission2_dialogs4 = [
 	"El ping ha sido un éxito eso quiere decir que el problema no está con su equipo,\n" +
 	"prueba hacer ping a la puerta de enlace."
 ]
+
 var mission2_dialogs5 = [
 	"Intentalo con el ping 192.168.10.10"
 ]
@@ -114,17 +115,6 @@ func _input(event):
 		# Si el panel nano está visible y el editor tiene el foco, ignoramos otros eventos
 		if nano_panel.visible and editor.has_focus():
 			return
-
-		# Si el popup de misión 2 está visible, lo ocultamos al presionar Enter
-		if mision2_popup.visible and event.keycode == KEY_ENTER:
-			mision2_popup.visible = false
-			return
-
-		# Si el sistema de diálogo está activo, procesamos el avance del diálogo
-		if dialog_active:
-			if event.keycode == KEY_ENTER:
-				advance_dialog()  # Avanzar al siguiente diálogo
-				return
 				
 		if event.keycode == KEY_UP:
 			if comando_actual == null:
@@ -179,6 +169,19 @@ func _input(event):
 
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
+			print("aaaa")
+			if dialog_box.visible:
+				print("ssss")
+				dialog_box.visible = false
+				return
+			# Si el sistema de diálogo está activo, procesamos el avance del diálogo
+			if dialog_active:
+				advance_dialog() 
+				
+			# Si el popup de misión 2 está visible, lo ocultamos al presionar Enter
+			if mision2_popup.visible:
+				mision2_popup.visible = false
+				
 			var comando = current_command.strip_edges()
 			if comando != "":
 				comandos_introducidos.insert(0, comando)
@@ -232,7 +235,7 @@ func process_command(command: String):
 		else:
 			output = "No existe el directorio: " + target
 
-	elif command == "ls":
+	elif command == "ls ":
 		var full_path = get_full_path()
 		var dir = DirAccess.open(full_path)
 		if dir:
@@ -272,7 +275,7 @@ func process_command(command: String):
 			else:
 				output = "Error: El archivo '" + filename + "' no existe."
 
-	elif command.begins_with("ping"):
+	elif command.begins_with("ping "):
 		var target = command.substr(5).strip_edges()
 		if target == "":
 			output = "Error: Debes proporcionar una dirección IP o nombre de host."
@@ -305,12 +308,12 @@ func process_command(command: String):
 			else:
 				output = "ping: " + target + ": Temporary failure in name resolution"
 
-	elif command == "clear":
+	elif command == "clear ":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
 
-	elif command == "help":
+	elif command == "help ":
 		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
 
 	elif command == "":
