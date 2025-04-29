@@ -5,7 +5,6 @@ extends Control
 @onready var nano_panel = $NanoPanel
 @onready var editor = $NanoPanel/Editor
 @onready var save_button = $NanoPanel/GuardarBoton
-@onready var mision2_popup = $Mision2Popup
 
 # Nodos nuevos para el diálogo
 @onready var container_dialogo = $ContainerDialogo  # Nodo padre para el diálogo
@@ -83,7 +82,6 @@ var rtt_times = []
 func _ready():
 	history.bbcode_enabled = true
 	nano_panel.visible = false
-	mision2_popup.visible = false
 	dialog_box.visible = false  # Inicializar el diálogo oculto
 	init_structure()
 	show_prompt()
@@ -169,18 +167,9 @@ func _input(event):
 
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
-			print("aaaa")
-			if dialog_box.visible:
-				print("ssss")
-				dialog_box.visible = false
-				return
 			# Si el sistema de diálogo está activo, procesamos el avance del diálogo
 			if dialog_active:
 				advance_dialog() 
-				
-			# Si el popup de misión 2 está visible, lo ocultamos al presionar Enter
-			if mision2_popup.visible:
-				mision2_popup.visible = false
 				
 			var comando = current_command.strip_edges()
 			if comando != "":
@@ -215,10 +204,11 @@ func process_command(command: String):
 		if target == "..":
 			if current_path != "/":
 				var parts = current_path.split("/")
-				parts = parts.filter(func(p): return p != "")
 				if parts.size() > 0:
 					parts.remove_at(parts.size() - 1)
-					new_path = "/" + "/".join(parts) if parts.size() > 0 else "/"
+					new_path = "/".join(parts) if parts.size() > 0 else "/"
+				else:
+					new_path = "/"
 		elif target == "/":
 			new_path = "/"
 		else:
