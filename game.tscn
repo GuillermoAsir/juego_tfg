@@ -63,8 +63,6 @@ offset_right = 8.0
 offset_bottom = 8.0
 text = "guardar y salir"
 
-[node name="Mision2Popup" type="Popup" parent="."]
-
 [node name="ContainerDialogo" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1
