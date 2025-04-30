@@ -61,6 +61,15 @@ var mission2_dialogs4 = [
 var mission2_dialogs5 = [
 	"Intentalo con el ping 192.168.10.10"
 ]
+var mission2_dialogs6 = [
+	"¡Por todos los nodos! Al router le pasa algo,\n" +
+	"Ahora mismo les mando un mensaje para que utilicen la técnica ancestral de todo buen informático...\n" +
+	"Reiniciar el router"
+]
+
+var mission2_dialogs7 = [
+	"Enhorabuena por este gran éxito, ¡aquí te dejo tu pin!"
+]
 
 # Variables para controlar el flujo de la misión
 var esperando_ls = false  # Esperando que el jugador use `ls`
@@ -101,7 +110,7 @@ func init_structure():
 		if dir:
 			dir.make_dir("ubuntu_sim")
 			dir.change_dir("ubuntu_sim")
-			for folder in ["home", "etc", "var", "secret", "bin"]:
+			for folder in ["home", "etc", "var", "secret", "bin",]:
 				dir.make_dir(folder)
 			dir.make_dir("home/usuario1")
 			dir.make_dir("home/usuario1/Documents")
@@ -165,11 +174,6 @@ func _input(event):
 			show_prompt()
 			return
 
-# Autocompletado con Tab
-		if event.keycode == KEY_TAB:
-			autocomplete_command()
-			return
-
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
 			# Si el sistema de diálogo está activo, procesamos el avance del diálogo
@@ -193,11 +197,24 @@ func _input(event):
 			current_command += char_input
 			history.text = history_text + current_command
 
+		# Autocompletado con Tab
+		if event.keycode == KEY_TAB:
+			autocomplete_command()
+			return
+
 func get_full_path():
 	var normalized = current_path
 	if normalized != "/" and normalized.ends_with("/"):
 		normalized = normalized.substr(0, normalized.length() - 1)
 	return BASE_PATH + normalized
+
+func normalize_path(path: String) -> String:
+	var parts = []
+	for p in path.split("/"):
+		if p != "":
+			parts.append(p)
+	return "/" + "/".join(parts)
+
 
 func process_command(command: String):
 	var output := ""
@@ -206,21 +223,34 @@ func process_command(command: String):
 	if command.begins_with("cd "):
 		var target = command.substr(3).strip_edges()
 		var new_path = current_path
-		if target == "..":
+
+		# Caso especial: cd .
+		if target == ".":
+			# No hacer nada, ya estamos en el mismo directorio
+			pass
+
+		# Caso especial: cd ..
+		elif target == "..":
 			if current_path != "/":
 				var parts = current_path.split("/")
 				if parts.size() > 0:
 					parts.remove_at(parts.size() - 1)
-					new_path = "/".join(parts) if parts.size() > 0 else "/"
+					new_path = "/" + "/".join(parts) if parts.size() > 0 else "/"
 				else:
 					new_path = "/"
+
+		# Caso especial: cd /
 		elif target == "/":
 			new_path = "/"
+
+		# Ruta relativa o absoluta
 		else:
 			new_path = target if target.begins_with("/") else current_path.rstrip("/") + "/" + target
-		var full_path = BASE_PATH + new_path
+
+		var full_path = BASE_PATH + normalize_path(new_path)
 		if DirAccess.dir_exists_absolute(full_path):
-			current_path = new_path
+			current_path = normalize_path(new_path)
+
 			# Activar el estado de espera si estamos en el directorio correcto
 			if current_path == "/home/usuario1/Documents" and not archivo_listado:
 				esperando_ls = true
@@ -277,38 +307,43 @@ func process_command(command: String):
 		else:
 			ping_host = target
 			if is_valid_ip(target) or resolve_hostname(target):
-				if mision_actual == 4:
-					if ping_host == "192.168.10.10":
-						start_dialog(mission2_dialogs4)  # Iniciar el cuarto diálogo
-						mision_actual = 5
-					else:# Mensaje de
-						start_dialog(mission2_dialogs5) 
 				ping_active = true
 				ping_seq = 1
 				rtt_times.clear()
 				ping_timer = Timer.new()
-				ping_timer.wait_time = 1.0  # Intervalo de 1 segundo entre paquetes
+				ping_timer.wait_time = 1.0
 				ping_timer.one_shot = false
 				add_child(ping_timer)
 				ping_timer.timeout.connect(_on_ping_timer_timeout)
 				ping_timer.start()
-
 				history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
 				history.text = history_text
-				show_prompt()  # Mantener el prompt visible
-				if not ping_active and ping_host == "192.168.10.10" and not ping_completado:
-					ping_completado = true
-					
-				
+				show_prompt()
+
+				# Comprobaciones de misión
+				if mision_actual == 4 and target == "192.168.10.10":
+					start_dialog(mission2_dialogs4)
+					mision_actual = 5
+
+				elif mision_actual == 4:
+					start_dialog(mission2_dialogs5)
+
+				elif mision_actual == 5 and target == "192.168.10.1":
+					start_dialog(mission2_dialogs6)
+					mision_actual = 6
+				elif mision_actual == 6 and target == "192.168.10.1":
+					start_dialog(mission2_dialogs7)
+
 			else:
 				output = "ping: " + target + ": Temporary failure in name resolution"
+
 
 	elif command == "clear":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
 
-	elif command == "help":
+	elif command == "help ":
 		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
 
 	elif command == "":
@@ -398,35 +433,29 @@ func resolve_hostname(hostname: String) -> bool:
 	return hostname == "localhost" or hostname.ends_with(".com")
 
 func autocomplete_command():
-	# Dividir el comando actual en partes (por ejemplo, "cd Documents")
 	var parts = current_command.strip_edges().split(" ")
-	var last_part = parts[-1]  # Última parte del comando (lo que se está escribiendo)
+	var last_part = parts[-1]
 
-	# Obtener el directorio actual
 	var full_path = get_full_path()
 	var dir = DirAccess.open(full_path)
 	if not dir:
 		return
 
-	# Obtener archivos y carpetas en el directorio actual
 	var dirs = dir.get_directories()
 	var files = dir.get_files()
 	var all_items = dirs + files
 
-	# Filtrar coincidencias basadas en la última parte del comando
 	var matches = []
 	for item in all_items:
 		if item.begins_with(last_part):
 			matches.append(item)
 
-	# Manejar las coincidencias
 	if matches.size() == 1:
-		# Si hay una única coincidencia, autocompletar
 		var completed = matches[0]
 		current_command = " ".join(parts.slice(0, -1)) + " " + completed
 		history.text = history_text + current_command
 	elif matches.size() > 1:
-		# Si hay múltiples coincidencias, mostrar sugerencias
-		var suggestions = "\nSugerencias: " + ", ".join(matches)
-		history_text += suggestions
-		history.text = history_text
+		var suggestions = "\n" + "  ".join(matches) + "\n"
+		# NO añadir al history_text — solo mostrarlo como visual temporal
+		var prompt = "\n" + USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
+		history.text = history_text + suggestions + prompt
