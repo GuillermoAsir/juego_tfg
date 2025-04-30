@@ -165,11 +165,6 @@ func _input(event):
 			show_prompt()
 			return
 
-# Autocompletado con Tab
-		if event.keycode == KEY_TAB:
-			autocomplete_command()
-			return
-
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
 			# Si el sistema de diálogo está activo, procesamos el avance del diálogo
@@ -192,6 +187,11 @@ func _input(event):
 			var char_input = char(event.unicode)
 			current_command += char_input
 			history.text = history_text + current_command
+
+		# Autocompletado con Tab
+		if event.keycode == KEY_TAB:
+			autocomplete_command()
+			return
 
 func get_full_path():
 	var normalized = current_path
@@ -303,12 +303,12 @@ func process_command(command: String):
 			else:
 				output = "ping: " + target + ": Temporary failure in name resolution"
 
-	elif command == "clear":
+	elif command == "clear ":
 		history_text = ""  # Limpiamos todo el historial de la consola
 		show_prompt()  # Volvemos a mostrar el prompt inicial
 		return
 
-	elif command == "help":
+	elif command == "help ":
 		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
 
 	elif command == "":
