@@ -1,12 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://bnyfgnkbfuxen"]
+[gd_scene load_steps=4 format=3 uid="uid://bnyfgnkbfuxen"]
 
 [ext_resource type="Script" uid="uid://cemyij6msbtc3" path="res://terminal.gd" id="1_80nbo"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_e2o6t"]
-bg_color = Color(0.6, 0.117647, 0.6, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_feb5d"]
-bg_color = Color(0.490067, 0.0925016, 0.490379, 1)
+bg_color = Color(0.466667, 0.129412, 0.435294, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_80nbo"]
 bg_color = Color(0.43202, 0.0577897, 0.323715, 1)
@@ -23,7 +20,6 @@ script = ExtResource("1_80nbo")
 layout_mode = 0
 offset_right = 1152.0
 offset_bottom = 648.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_e2o6t")
 
 [node name="MarginContainer" type="MarginContainer" parent="Background"]
 layout_mode = 2
@@ -34,7 +30,7 @@ layout_mode = 2
 [node name="GameInfo" type="PanelContainer" parent="Background/MarginContainer/Rows"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_feb5d")
+theme_override_styles/panel = SubResource("StyleBoxFlat_e2o6t")
 
 [node name="History" type="RichTextLabel" parent="Background/MarginContainer/Rows/GameInfo"]
 custom_minimum_size = Vector2(800, 600)
@@ -43,7 +39,10 @@ bbcode_enabled = true
 scroll_following = true
 metadata/_edit_group_ = true
 
+[node name="Timer" type="Timer" parent="Background/MarginContainer/Rows/GameInfo"]
+
 [node name="NanoPanel" type="Panel" parent="."]
+visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
 offset_right = 40.0
@@ -79,7 +78,6 @@ grow_vertical = 0
 [node name="DialogBox" type="Popup" parent="ContainerDialogo"]
 position = Vector2i(0, 474)
 size = Vector2i(1154, 150)
-visible = true
 
 [node name="DialogContent" type="Label" parent="ContainerDialogo/DialogBox"]
 offset_right = 40.0
