@@ -162,8 +162,8 @@ func _ready():
 192.168.10.254  router_sede
 
 # Fin del archivo""")
-		ips_file.close()
-	print("✅ Archivo IPS_El_Bohío.txt creado")
+		#ips_file.close()
+	#print("✅ Archivo IPS_El_Bohío.txt creado")
 		
 	# Inicializar la nueva misión Apache
 #func inicializar_mision_apache():
@@ -222,34 +222,15 @@ func show_prompt():
 func init_structure():
 	var dir = DirAccess.open("user://")
 	if dir:
-		# Crear la carpeta del usuario contabilidad si no existe
-		#if not dir.dir_exists("contabilidad_sim"):
-			#dir.make_dir("contabilidad_sim")
-			#dir.change_dir("contabilidad_sim")
-			#for folder in ["home1", "etc1", "var1", "secret1", "bin1"]:
-				#dir.make_dir(folder)
-			#dir.make_dir("home/contabilidad")  # Carpeta personal del usuario contabilidad
-			#dir.make_dir("home/contabilidad/Documentos")
-			#dir.make_dir("home/contabilidad/Descargas")
-			#dir.make_dir("home/contabilidad/Escritorio")
-			#dir.change_dir("..")  # Volver al directorio raí
+		# Crear ubuntu_sim si no existe
+		if not dir.dir_exists("ubuntu_sim"):
+			dir.make_dir("ubuntu_sim")
+		dir.change_dir("ubuntu_sim")
 
-	# Aquí puedes agregar más usuarios en el futuro (por ejemplo, ventas_sim)
-		# if not dir.dir_exists("ventas_sim"):
-		#     dir.make_dir("ventas_sim")
-		#     dir.change_dir("ventas_sim")
-		#     for folder in ["home", "etc", "var", "secret", "bin"]:
-		#         dir.make_dir(folder)
-		#     dir.make_dir("home/ventas")  # Carpeta personal del usuario ventas
-		#     dir.make_dir("home/ventas/Documents")
-		#     dir.make_dir("home/ventas/Downloads")
-		#     dir.make_dir("home/ventas/Desktop")
-		#     dir.change_dir("..")  # Volver al directorio raíz
-
-		## Crear carpetas raíz
-		#for folder in ["home2", "etc2", "var2", "secret2", "bin2", "usr2"]:
-			#if not dir.dir_exists(folder):
-				#dir.make_dir(folder)
+		# Crear carpetas raíz
+		for folder in ["home", "etc", "var", "bin", "usr"]:
+			if not dir.dir_exists(folder):
+				dir.make_dir(folder)
 
 		# HOME
 		if not dir.dir_exists("home/usuario1"):
@@ -284,6 +265,7 @@ func init_structure():
 		for var_sub in ["log", "tmp", "lib", "spool", "cache", "mail", "run"]:
 			if not dir.dir_exists("var/" + var_sub):
 				dir.make_dir("var/" + var_sub)
+
 
 func _input(event):
 	if event is InputEventKey and event.pressed:
