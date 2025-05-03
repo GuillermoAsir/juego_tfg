@@ -520,30 +520,34 @@ func process_command(command: String):
 		output = "Editando " + filename + " (usa el botón para guardar y salir)"
 
 	elif command.begins_with("rm "):
-		var args = command.substr(3).strip_edges().split(" ")
-		var target = args[0]
-		var recursive = "-r" in args or "--recursive" in args
-		var full_path = get_full_path() + "/" + target
-		if DirAccess.dir_exists_absolute(full_path):
-			if recursive:
-				var dir = DirAccess.open(full_path)
-				if dir:
-					dir.remove(full_path)
-					output = "Directorio eliminado: " + target
+			var args = command.substr(3).strip_edges().split(" ")
+			var recursive = "-r" in args or "--recursive" in args
+			var target = args[-1]  # último argumento (soporta: rm -r carpeta)
+
+			var full_path = get_full_path() + "/" + target
+
+			if DirAccess.dir_exists_absolute(full_path):
+				if recursive:
+					if DirAccess.dir_exists_absolute(full_path):
+						remove_directory_recursive(full_path)
+						output = "Directorio eliminado: " + target
 				else:
-					output = "No se pudo eliminar el directorio: " + target
+					output = "No se pudo eliminar el directorio (no existe): " + target
+			elif FileAccess.file_exists(full_path):
+				if recursive:
+					output = "'" + target + "' es un archivo. Usa solo 'rm' para eliminarlo, sin -r."
+				else:
+					var parent_dir = DirAccess.open(get_full_path())
+					if parent_dir:
+						var err = parent_dir.remove(target)
+						if err == OK:
+							output = "Archivo eliminado: " + target
+						else:
+							output = "No se pudo eliminar el archivo '" + target + "'."
+					else:
+						output = "No se pudo acceder al directorio padre para eliminar '" + target + "'."
 			else:
-				output = "rm: no se puede eliminar '" + target + "': Es un directorio. Usa -r para eliminar recursivamente."
-		elif FileAccess.file_exists(full_path):
-			var file = FileAccess.open(full_path, FileAccess.READ)
-			if file:
-				file.close()
-				DirAccess.remove_absolute(full_path)
-				output = "Archivo eliminado: " + target
-			else:
-				output = "No se pudo eliminar el archivo: " + target
-		else:
-			output = "rm: no se puede eliminar '" + target + "': No existe tal archivo o directorio"
+				output = "rm: no se puede eliminar '" + target + "': no existe tal archivo o directorio."
 
 	elif command.begins_with("cat "):
 		var filename = command.substr(4).strip_edges()
@@ -792,6 +796,25 @@ func process_command(command: String):
 		history_text += "\n" + output
 		history.text = history_text
 	show_prompt()
+#Función que borre de forma recursiva los directorios
+func remove_directory_recursive(path):
+	var dir = DirAccess.open(path)
+	if dir:
+		dir.list_dir_begin()
+		var file_name = dir.get_next()
+		while file_name != "":
+			if file_name != "." and file_name != "..":
+				var full_path = path + "/" + file_name
+				if dir.current_is_dir():
+					# Si es un subdirectorio, llamar recursivamente
+					remove_directory_recursive(full_path)
+				else:
+					# Si es un archivo, eliminarlo
+					DirAccess.remove_absolute(full_path)
+			file_name = dir.get_next()
+		dir.list_dir_end()
+		# Cuando esté vacío, eliminar el directorio principal
+		DirAccess.remove_absolute(path)
 
 # Función para copiar directorios recursivamente
 func copy_directory(src: String, dst: String):
