@@ -974,3 +974,4 @@ func autocomplete_command():
 		# NO añadir al history_text — solo mostrarlo como visual temporal
 		var prompt = "\n" + USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
 		history.text = history_text + suggestions + prompt
+#Este si
