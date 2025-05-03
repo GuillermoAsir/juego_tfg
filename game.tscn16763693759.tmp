@@ -74,8 +74,6 @@ offset_right = 1153.0
 offset_bottom = 604.0
 grow_horizontal = 2
 grow_vertical = 0
-focus_mode = 2
-mouse_filter = 2
 
 [node name="DialogBox" type="Popup" parent="ContainerDialogo"]
 position = Vector2i(0, 474)
@@ -84,10 +82,7 @@ size = Vector2i(1154, 150)
 [node name="DialogContent" type="Label" parent="ContainerDialogo/DialogBox"]
 offset_right = 40.0
 offset_bottom = 23.0
-focus_mode = 2
 
 [node name="DialogArrow" type="TextureRect" parent="ContainerDialogo/DialogBox"]
 offset_right = 40.0
 offset_bottom = 40.0
-focus_mode = 2
-mouse_filter = 2

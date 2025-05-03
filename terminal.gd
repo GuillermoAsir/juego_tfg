@@ -37,6 +37,10 @@ var cursor_timer: Timer # Nodo Timer
 var dialog_active = false
 var current_dialog_index = 0
 
+#Comando sudo
+var sudo_password = "contraseña123"  # Contraseña predeterminada para sudo
+var sudo_authenticated = false      # Indica si el jugador ya ha ingresado la contraseña
+
 #Fichero mensaje para pam
 var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/contabilidad/Documentos/Privado/Para_Pam.txt"
 
@@ -48,6 +52,11 @@ var comando_actual = null
 var apache_estado_verificado = false  # Indica si el jugador ha verificado el estado de Apache
 var apache_reiniciado = false        # Indica si el jugador ha reiniciado Apache
 var apache_mision_completada = false # Indica si la misión Apache está completada
+var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
+
+# Variables comandos chorras
+var start_time = Time.get_unix_time_from_system()  # Esto lo deberías inicializar al arranque
+var command_history = []  # Lista para almacenar el historial
 
 #Variables ssh
 # Variables principales
@@ -132,7 +141,7 @@ var ping_completado = false  # Indica si el jugador ha completado el primer ping
 var ping_error = false # Indica si el jugador no puso el ping correcto.
 
 #Variables para saber en que misión está
-var mision_actual = 6
+var mision_actual = 1
 
 # Variables para el comando ping
 var ping_timer: Timer = null
@@ -443,6 +452,193 @@ func process_command(command: String):
 		else:
 			output = "No existe el directorio: " + target
 
+	elif command == "date":
+		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
+		output = "[color=white]" + fecha_actual + "[/color]"
+
+	elif command == "pwd":
+		output = "[color=white]" + current_path + "[/color]"
+
+	elif command == "uptime":
+		var tiempo_actual = Time.get_unix_time_from_system()
+		var tiempo_transcurrido = tiempo_actual - start_time
+		output = "[color=white]Uptime: " + str(tiempo_transcurrido) + " segundos[/color]"
+
+	elif command == "cal":
+		var fecha_actual = Time.get_datetime_dict_from_unix_time(Time.get_unix_time_from_system())
+		output = "[color=white]Calendario " + str(fecha_actual["month"]) + "/" + str(fecha_actual["year"]) + "[/color]"
+
+	elif command.begins_with("echo "):
+		var mensaje = command.substr(5)
+		output = "[color=white]" + mensaje + "[/color]"
+
+	elif command.begins_with("diff "):
+		var args = command.substr(5).strip_edges().split(" ")
+		if args.size() != 2:
+			output = "[color=red]Error: Debes especificar dos archivos para comparar.[/color]"
+		else:
+			var file1 = FileAccess.open(BASE_PATH + "/" + args[0], FileAccess.READ)
+			var file2 = FileAccess.open(BASE_PATH + "/" + args[1], FileAccess.READ)
+			
+			if file1 == null or file2 == null:
+				output = "[color=red]Error: Uno o ambos archivos no existen.[/color]"
+			else:
+				var lines1 = file1.get_as_text().split("\n")
+				var lines2 = file2.get_as_text().split("\n")
+				var diff_result = ""
+
+				var max_lines = max(lines1.size(), lines2.size())
+				for i in range(max_lines):
+					var line1 = lines1[i] if i < lines1.size() else "[color=red]No existe en archivo 1[/color]"
+					var line2 = lines2[i] if i < lines2.size() else "[color=red]No existe en archivo 2[/color]"
+					if line1 != line2:
+						diff_result += "[color=yellow]Línea " + str(i+1) + ":\n" + args[0] + ": " + line1 + "\n" + args[1] + ": " + line2 + "[/color]\n"
+				
+				output = diff_result if diff_result != "" else "[color=green]Los archivos son idénticos.[/color]"
+
+	elif command.begins_with("grep "):
+		var args = command.substr(5).strip_edges().split(" ")
+		if args.size() < 2:
+			output = "[color=red]Uso: grep [opciones] patrón archivo[/color]"
+		else:
+			var options = []
+			var pattern = ""
+			var filename = ""
+
+			for arg in args:
+				if arg.begins_with("-"):
+					options.append(arg)
+				elif pattern == "":
+					pattern = arg
+				else:
+					filename = arg
+			
+			if filename == "":
+				output = "[color=red]Error: Debes especificar un archivo.[/color]"
+			else:
+				var file = FileAccess.open(BASE_PATH + "/" + filename, FileAccess.READ)
+				if file == null:
+					output = "[color=red]Error: Archivo no encontrado.[/color]"
+				else:
+					var lines = file.get_as_text().split("\n")
+					var matched_lines = []
+					
+					for line in lines:
+						var search_line = line
+						if "-i" in options:
+							search_line = search_line.to_lower()
+							pattern = pattern.to_lower()
+						
+						var match_found = search_line.find(pattern) != -1
+						if "-v" in options:
+							match_found = !match_found
+
+						if match_found:
+							matched_lines.append(line)
+					
+					if "-c" in options:
+						output = "[color=yellow]Número de coincidencias: " + str(matched_lines.size()) + "[/color]"
+					elif "-l" in options:
+						output = "[color=green]" + filename + "[/color]"
+					else:
+						output = "\n".join(matched_lines) if matched_lines.size() > 0 else "[color=red]No se encontraron coincidencias.[/color]"
+
+	elif command.begins_with("head "):
+		var args = command.substr(5).strip_edges().split(" ")
+		var num_lines = 10  # Por defecto, muestra 10 líneas
+		var filename = ""
+
+		for arg in args:
+			if arg.begins_with("-"):
+				num_lines = int(arg.substr(1))
+			else:
+				filename = arg
+		
+		if filename == "":
+			output = "[color=red]Error: Debes especificar un archivo.[/color]"
+		else:
+			var file = FileAccess.open(BASE_PATH + "/" + filename, FileAccess.READ)
+			if file == null:
+				output = "[color=red]Error: Archivo no encontrado.[/color]"
+			else:
+				var lines = file.get_as_text().split("\n")
+				output = "\n".join(lines.slice(0, num_lines))
+
+	elif command.begins_with("tail "):
+		var args = command.substr(5).strip_edges().split(" ")
+		var num_lines = 10  # Por defecto, muestra 10 líneas
+		var filename = ""
+
+		for arg in args:
+			if arg.begins_with("-"):
+				num_lines = int(arg.substr(1))
+			else:
+				filename = arg
+		
+		if filename == "":
+			output = "[color=red]Error: Debes especificar un archivo.[/color]"
+		else:
+			var file = FileAccess.open(BASE_PATH + "/" + filename, FileAccess.READ)
+			if file == null:
+				output = "[color=red]Error: Archivo no encontrado.[/color]"
+			else:
+				var lines = file.get_as_text().split("\n")
+				output = "\n".join(lines.slice(-num_lines, lines.size()))
+
+	#elif command == "history":
+		#output = "[color=white]Historial de comandos:\n[/color]"
+		#for i in range(command_history.size()):
+			#output += "[color=yellow]" + str(i + 1) + "  " + command_history[i] + "[/color]\n"
+
+	elif command.begins_with("df -h"):
+		var disk_usage = [
+			{ "filesystem": "/dev/sda1", "size": "50G", "used": "25G", "avail": "25G", "use%": "50%", "mounted": "/mnt" },
+			{ "filesystem": "/dev/sdb1", "size": "100G", "used": "40G", "avail": "60G", "use%": "40%", "mounted": "/mnt" },
+			{ "filesystem": "/tmpfs", "size": "4G", "used": "1G", "avail": "3G", "use%": "25%", "mounted": "/mnt" }
+		]
+
+		output = "[color=white]%-16s %-8s %-8s %-8s %-6s %s\n[/color]" % ["Filesystem", "Size", "Used", "Avail", "Use%", "Mounted on"]
+		for disk in disk_usage:
+			output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
+				disk["filesystem"], disk["size"], disk["used"], disk["avail"], disk["use%"], disk["mounted"]
+			]
+
+	elif command == "apt update":
+		output = "[color=white]Obteniendo lista de paquetes...\n[/color]"
+		await get_tree().create_timer(0.8).timeout
+		output += "[color=white]Descargando información de repositorios...\n[/color]"
+		await get_tree().create_timer(1.0).timeout
+		output += "[color=white]Repositorio: http://mirrors.kernel.org/ubuntu focal-updates\n[/color]"
+		await get_tree().create_timer(1.5).timeout
+		output += "[color=white]Repositorio: http://security.ubuntu.com/ubuntu focal-security\n[/color]"
+		await get_tree().create_timer(1.8).timeout
+		output += "[color=green]Se han actualizado 15 paquetes, 5 paquetes tienen nuevas versiones disponibles.\n[/color]"
+		await get_tree().create_timer(2.0).timeout
+		output += "[color=white]Ejecuta 'apt upgrade' para actualizar los paquetes disponibles.[/color]"
+
+	elif command == "apt upgrade":
+		output = "[color=white]Leyendo lista de paquetes...\n[/color]"
+		await get_tree().create_timer(0.8).timeout
+		output += "[color=white]Calculando actualización...\n[/color]"
+		await get_tree().create_timer(1.0).timeout
+		output += "[color=white]Los siguientes paquetes serán actualizados:\n - libc6\n - bash\n - openssh-server\n - python3\n - vim\n[/color]"
+		await get_tree().create_timer(1.5).timeout
+		output += "[color=white]Descargando paquetes...\n[/color]"
+		await get_tree().create_timer(1.8).timeout
+		
+		# Simulación de error ocasional en instalación
+		var error_chance = randi() % 10
+		if error_chance < 2:
+			output += "[color=red]Error: No se pudo instalar bash. Dependencias rotas.[/color]\n"
+			output += "[color=white]Intentando reparar dependencias...\n[/color]"
+			await get_tree().create_timer(1.2).timeout
+			output += "[color=green]Dependencias corregidas. Continuando instalación.[/color]\n"
+		
+		await get_tree().create_timer(1.5).timeout
+		output += "[color=green]Instalación completada. Se han actualizado 5 paquetes.[/color]"
+
+
+
 	elif command == "ls":
 		var full_path = get_full_path()
 		var dir = DirAccess.open(full_path)
@@ -588,9 +784,8 @@ func process_command(command: String):
 				output = "ping: " + target + ": Temporary failure in name resolution"
 
 	elif command.begins_with("sudo systemctl"):
-		if mision_actual < 8:
-			output = "No tienes acceso a este comando todavía."
-		else:
+		# Verificar si el jugador está en el contexto de la misión Apache
+		if mision_actual == 8:
 			var parts = command.split(" ")
 			if parts.size() < 3:
 				output = "Comando incompleto. Usa sudo systemctl status apache o sudo systemctl restart apache."
@@ -600,9 +795,8 @@ func process_command(command: String):
 					if "apache" in command:
 						if not apache_estado_verificado:
 							apache_estado_verificado = true
-							if mision_actual == 8:
-								output = "[color=red]● apache.service - Apache HTTP Server\n   Loaded: loaded (/lib/systemd/system/apache.service; enabled; vendor preset: enabled)\n   Active: failed (Result: exit-code) since Mon 2023-10-01 12:00:00 UTC; 1h ago[/color]"
-								start_dialog(apache_dialogs3)
+							output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/usr/lib/systemd/system/apache2.service; enabled; preset: enabled)\n Active: [color=red]failed[/color] (Result: exit-code) since " + fecha_actual + " CEST; 8s ago\n Duration: 47min 35.229s\n Process: 786f618a04744458eb65217e5851d59fe ExecStart=/usr/sbin/apachectl start (code=[color=red]exited[/color], status=[color=red]1/FAILURE[/color])\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 5825 (apache2)\n Status: \"\" active (running) since " + fecha_actual + " CEST; 8s ago\n Docs: man:apache2(8)\n Tasks: 1 (limit: 4915)\n Memory: 1.6M\n CPU: 13ms[/color]"
+							start_dialog(apache_dialogs3)  # Mostrar diálogo específico de la misión
 						else:
 							output = "El servicio Apache ya fue verificado previamente."
 				elif action == "restart":
@@ -610,16 +804,51 @@ func process_command(command: String):
 						if apache_estado_verificado and not apache_reiniciado:
 							apache_reiniciado = true
 							output = "Restarting Apache service..."
-							start_dialog(apache_dialogs4)
+							start_dialog(apache_dialogs4)  # Mostrar diálogo específico de la misión
 						else:
 							output = "No se puede reiniciar Apache sin verificar su estado primero."
+					else:
+						output = "Comando incorrecto. Usa sudo systemctl status apache o sudo systemctl restart apache."
+
+				# Verificar si la misión está completada
+				if apache_estado_verificado and apache_reiniciado:
+					apache_mision_completada = true
+					start_dialog(apache_dialogs5)  # Mostrar mensaje final de la misión
+					mision_actual += 1  # Avanzar a la siguiente misión
+		else:
+			# Comportamiento normal fuera del contexto de la misión
+			var parts = command.split(" ")
+			if parts.size() < 3:
+				output = "Comando incompleto. Usa sudo systemctl status apache o sudo systemctl restart apache."
+			else:
+				var action = parts[2].strip_edges()
+				if action == "status":
+					if "apache" in command:
+						output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/lib/systemd/system/apache2.service; [color=green]enabled[/color]; vendor preset: [color=green]enabled[/color])\n Active: [color=green]active (running)[/color] since " + fecha_actual + " CEST; 23s ago\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 1234 (apache2)\n Tasks: 8 (limit: 4915)\n Memory: 10.5M\n CGroup: /system.slice/apache2.service\n ├─1234 /usr/sbin/apache2 -k start\n ├─1235 /usr/sbin/apache2 -k start\n └─1236 /usr/sbin/apache2 -k start[/color]"
+					else:
+						output = "Servicio no encontrado."
+				elif action == "restart":
+					if "apache" in command:
+						output = "Restarting Apache service..."
+					else:
+						output = "Servicio no encontrado."
 				else:
 					output = "Comando incorrecto. Usa sudo systemctl status apache o sudo systemctl restart apache."
 
-				if apache_estado_verificado and apache_reiniciado:
-					apache_mision_completada = true
-					start_dialog(apache_dialogs5)
-					mision_actual += 1
+	elif command.begins_with("sudo "):
+		if not sudo_authenticated:
+			output = "Contraseña: "
+			# Esperar a que el jugador ingrese la contraseña
+			return
+
+	elif command == "authenticate":
+		var password_input = command.substr(10).strip_edges()  # Obtener la contraseña ingresada
+		if password_input == sudo_password:
+			sudo_authenticated = true
+			output = "[color=green]Autenticación exitosa.[/color]"
+		else:
+			output = "[color=red]Contraseña incorrecta. Inténtalo de nuevo.[/color]"
+		return
 
 	elif command.begins_with("ssh "):
 		var parts = command.split(" ")
@@ -950,7 +1179,25 @@ func autocomplete_command():
 	var parts = current_command.strip_edges().split(" ")
 	var last_part = parts[-1]
 
-	var full_path = get_full_path()
+	# Dividir last_part en ruta base y fragmento incompleto
+	var last_slash = last_part.rfind("/")
+	var base_path = ""
+	var incomplete = ""
+	if last_slash != -1:
+		base_path = last_part.substr(0, last_slash)  # ejemplo: /home
+		incomplete = last_part.substr(last_slash + 1)  # ejemplo: us
+	else:
+		base_path = "."  # directorio actual
+		incomplete = last_part
+
+	# Construir la ruta absoluta desde current_path
+	var full_path = ""
+	if base_path.begins_with("/"):
+		full_path = BASE_PATH + normalize_path(base_path)  # ruta absoluta interna del juego
+	else:
+		full_path = get_full_path() + "/" + base_path  # relativa al directorio actual
+
+
 	var dir = DirAccess.open(full_path)
 	if not dir:
 		return
@@ -961,22 +1208,21 @@ func autocomplete_command():
 
 	var matches = []
 	for item in all_items:
-		if item.begins_with(last_part):
+		if item.begins_with(incomplete):
 			matches.append(item)
 
 	if matches.size() == 1:
 		var completed = matches[0]
-		current_command = " ".join(parts.slice(0, -1)) + " " + completed
-		
-		# Mover el cursor al final del comando
-		cursor_pos = current_command.length()
+		var new_last_part = base_path + "/" + completed if base_path != "." else completed
+		current_command = " ".join(parts.slice(0, -1)) + " " + new_last_part
 
+		cursor_pos = current_command.length()
 		history.text = history_text + current_command
 		update_command_display()
-
 	elif matches.size() > 1:
 		var suggestions = "\n" + "  ".join(matches) + "\n"
-		# NO añadir al history_text — solo mostrarlo como visual temporal
 		var prompt = "\n" + USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
 		history.text = history_text + suggestions + prompt
-#Este si
+
+	func _on_containerdialog_shortcut_activated():
+		visible = false  # Oculta el diálogo cuando presionas Enter
