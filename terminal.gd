@@ -1197,14 +1197,23 @@ func autocomplete_command():
 	else:
 		full_path = get_full_path() + "/" + base_path  # relativa al directorio actual
 
-
 	var dir = DirAccess.open(full_path)
 	if not dir:
 		return
 
 	var dirs = dir.get_directories()
 	var files = dir.get_files()
-	var all_items = dirs + files
+
+	# Distinguir el tipo de comando
+	var command_type = parts[0] if parts.size() > 0 else ""
+	var all_items = []
+
+	if command_type == "cd" or command_type == "mkdir":
+		all_items = dirs  # solo directorios
+	elif command_type == "touch" or command_type == "nano" or command_type == "head" or command_type == "tail" or command_type == "cat" :
+		all_items = files  # solo archivos
+	else:
+		all_items = dirs + files  # ambos
 
 	var matches = []
 	for item in all_items:
@@ -1221,8 +1230,8 @@ func autocomplete_command():
 		update_command_display()
 	elif matches.size() > 1:
 		var suggestions = "\n" + "  ".join(matches) + "\n"
-		var prompt = "\n" + USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
-		history.text = history_text + suggestions + prompt
+		history.text = history_text + suggestions  # solo añade sugerencias
 
-	func _on_containerdialog_shortcut_activated():
-		visible = false  # Oculta el diálogo cuando presionas Enter
+		# reconstruir prompt limpio para que el jugador siga escribiendo
+		var prompt_line = USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
+		history.text += "\n" + prompt_line  # añade línea de prompt SIN tocar current_command
