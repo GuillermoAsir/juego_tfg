@@ -16,7 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = 5
+var mision_actual = 1
 
 const MISION_APACHE_1_STATUS_FALLIDO = 7
 const MISION_APACHE_2_RESTART = 8
@@ -880,13 +880,14 @@ func process_command(command: String):
 				if not dir.dir_exists(user_sim_path):
 					dir.make_dir(user_sim_path)
 					dir.change_dir(user_sim_path)
-					for folder in ["home", "etc", "var", "bin"]:
+					for folder in ["home", "etc", "var", "bin", "caca"]:
 						dir.make_dir(folder)
 					dir.make_dir("home/" + user)
 					dir.make_dir("home/" + user + "/Documentos")
 					dir.make_dir("home/" + user + "/Descargas")
 					dir.make_dir("home/" + user + "/Escritorio")
 					dir.make_dir("home/" + user + "/Documentos/Privado")
+					dir.make_dir("home/" + user + "/Documentos/Privado/caca")
 					dir.change_dir("..")
 
 					print("✅ Estructura de carpetas creada para:", user_sim_path)
@@ -1223,7 +1224,10 @@ func autocomplete_command():
 	var matches = []
 	for item in all_items:
 		if item.begins_with(incomplete):
-			matches.append(item)
+			if dirs.has(item):
+				matches.append(item + "/")
+			else:
+				matches.append(item)
 
 	if matches.size() == 1:
 		var completed = matches[0]
@@ -1235,8 +1239,7 @@ func autocomplete_command():
 		update_command_display()
 	elif matches.size() > 1:
 		var suggestions = "\n" + "  ".join(matches) + "\n"
-		history.text = history_text + suggestions  # solo añade sugerencias
+		history_text += suggestions  # guarda las sugerencias
 
-		# reconstruir prompt limpio para que el jugador siga escribiendo
-		var prompt_line = USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
-		history.text += "\n" + prompt_line  # añade línea de prompt SIN tocar current_command
+		# Añadir línea nueva del prompt limpio
+		history_text += USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE
