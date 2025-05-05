@@ -45,7 +45,7 @@ var sudo_authenticated = false      # Indica si el jugador ya ha ingresado la co
 var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/contabilidad/Documentos/Privado/Para_Pam.txt"
 
 # Variables para controlar lo que se ha introducido por consola
-var comandos_introducidos: Array[String] = []
+var comandos_introducidos: Array[String] = ["cd home/usuario1/Documentos"]
 var comando_actual = null
 
 # Variables para controlar el flujo de la misión Apache
@@ -79,7 +79,8 @@ var ssh_allowed_domains = {
 var mission2_dialogs = [
 	"Excelente, ya te encuentras en el directorio donde está el archivo.\n" +
 	"Ahora falta listarlo para asegurarnos que se encuentra ahí.\n" +
-	"Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
+	"Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro.",
+	"probando"
 ]
 
 var mission2_dialogs2 = [
@@ -1130,10 +1131,12 @@ func _on_save_button_pressed():
 
 # Funciones para manejar el sistema de diálogo
 func start_dialog(dialogs: Array):
-	dialog_active = true
-	current_dialog_index = 0
-	mission2_dialogs = dialogs
-	show_dialog()
+	dialog_box.start_dialog(dialogs)
+	dialog_box.visible = true
+	#dialog_active = true
+	#current_dialog_index = 0
+	#mission2_dialogs = dialogs
+	#show_dialog()
 
 func show_dialog():
 	dialog_box.visible = true
