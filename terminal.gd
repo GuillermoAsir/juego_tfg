@@ -651,7 +651,7 @@ func process_command(command: String):
 				output += "[color=white]" + file_name + "[/color] "
 
 			# Verificar si el jugador ha listado el archivo correcto
-			if current_path == "/home/usuario1/Documents" and esperando_ls and not archivo_listado:
+			if current_path == "/home/usuario1/Documentos" and esperando_ls and not archivo_listado:
 				if "IPS_El_Bohío.txt" in files:
 					archivo_listado = true
 					esperando_ls = false
