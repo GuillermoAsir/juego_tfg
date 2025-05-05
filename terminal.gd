@@ -14,6 +14,10 @@ extends Control
 @onready var dialog_content = $ContainerDialogo/DialogBox/DialogContent  # Texto del diálogo
 @onready var dialog_arrow = $ContainerDialogo/DialogBox/DialogArrow  # Indicador gráfico (opcional)
 
+const MISION_APACHE_1_STATUS_FALLIDO = 7
+const MISION_APACHE_2_RESTART = 8
+const MISION_APACHE_3_STATUS_OK = 9
+
 # Variables principales
 var current_command = ""
 var current_path = "/"  # Ruta relativa dentro de ubuntu_sim
@@ -50,7 +54,6 @@ var comandos_introducidos: Array[String] = [
 var comando_actual = null
 
 # Variables para controlar el flujo de la misión Apache
-var apache_estado_verificado = false  # Indica si el jugador ha verificado el estado de Apache
 var apache_reiniciado = false        # Indica si el jugador ha reiniciado Apache
 var apache_mision_completada = false # Indica si la misión Apache está completada
 var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
@@ -115,18 +118,13 @@ var mission2_dialogs6 = [
 
 var mission2_dialogs7 = [
 	"Enhorabuena por este gran éxito, ¡aquí te dejo tu pin!",
-	"Saludos soy Pam me han llegado muchos email donde dicen nuestros clientes que nuestra web no funciona."
-]
-# Diálogos de la misión Apache
-var apache_dialogs1 = [
-	"Saludos soy Pam me han llegado muchos email donde dicen nuestros clientes que nuestra web no funciona."
-]
-var apache_dialogs2 = [
-	"OMG! Repampanos y retuecanos ¡¿es que nadie hará nada?! Ah bueno nosotros.\n" +
+	" Pam:\n\nSaludos soy Pam me han llegado muchos email donde dicen nuestros clientes que nuestra web no funciona.",
+	" Viejo:\n\nOMG! Repampanos y retuecanos ¡¿es que nadie hará nada?! Ah bueno nosotros.\n" +
 	"Informáticos al rescate. Nuestra Web esta desde el servicio apache el indio apache noo!\n" +
 	"Apache es el servicio web. Hoy vas a mirar el estado del servicio y si esta mal lo vas a resetear.\n" +
 	"Empecemos mirando el estado solo tienes que escribir `sudo systemctl status apache`."
 ]
+# Diálogos de la misión Apache
 var apache_dialogs3 = [
 	"Vaya tenemos un error en rojo los peores de todos! Vamos a resetear el servicio Apache ahora escribe `sudo systemctl restart apache`."
 ]
@@ -144,7 +142,7 @@ var ping_completado = false  # Indica si el jugador ha completado el primer ping
 var ping_error = false # Indica si el jugador no puso el ping correcto.
 
 #Variables para saber en que misión está
-var mision_actual = 5
+var mision_actual = MISION_APACHE_1_STATUS_FALLIDO
 
 # Variables para el comando ping
 var ping_timer: Timer = null
@@ -354,7 +352,6 @@ func _input(event):
 				var summary = "^C\n--- " + ping_host + " ping statistics ---\n"
 				summary += str(transmitted) + " packets transmitted, " + str(received) + " received, " + str(lost_percent) + "% packet loss\n"
 
-				# Como no hay RTTs, no se muestra la línea rtt
 				if rtt_times.size() > 0:
 					var min_time = rtt_times.min()
 					var max_time = rtt_times.max()
@@ -390,7 +387,7 @@ func _input(event):
 					else:
 						start_dialog(mission2_dialogs5)
 				elif mision_actual == 6 and ping_host == "192.168.10.1":
-					mision_actual = 7
+					mision_actual = MISION_APACHE_1_STATUS_FALLIDO
 					start_dialog(mission2_dialogs7)
 			return
 
@@ -796,56 +793,35 @@ func process_command(command: String):
 				output = "ping: " + ping_host + ": Temporary failure in name resolution"
 
 	elif command.begins_with("sudo systemctl"):
-		# Verificar si el jugador está en el contexto de la misión Apache
-		if mision_actual == 8:
-			var parts = command.split(" ")
-			if parts.size() < 3:
-				output = "Comando incompleto. Usa sudo systemctl status apache o sudo systemctl restart apache."
-			else:
-				var action = parts[2].strip_edges()
-				if action == "status":
-					if "apache" in command:
-						if not apache_estado_verificado:
-							apache_estado_verificado = true
-							output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/usr/lib/systemd/system/apache2.service; enabled; preset: enabled)\n Active: [color=red]failed[/color] (Result: exit-code) since " + fecha_actual + " CEST; 8s ago\n Duration: 47min 35.229s\n Process: 786f618a04744458eb65217e5851d59fe ExecStart=/usr/sbin/apachectl start (code=[color=red]exited[/color], status=[color=red]1/FAILURE[/color])\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 5825 (apache2)\n Status: \"\" active (running) since " + fecha_actual + " CEST; 8s ago\n Docs: man:apache2(8)\n Tasks: 1 (limit: 4915)\n Memory: 1.6M\n CPU: 13ms[/color]"
-							start_dialog(apache_dialogs3)  # Mostrar diálogo específico de la misión
-						else:
-							output = "El servicio Apache ya fue verificado previamente."
-				elif action == "restart":
-					if "apache" in command:
-						if apache_estado_verificado and not apache_reiniciado:
-							apache_reiniciado = true
-							output = "Restarting Apache service..."
-							start_dialog(apache_dialogs4)  # Mostrar diálogo específico de la misión
-						else:
-							output = "No se puede reiniciar Apache sin verificar su estado primero."
-					else:
-						output = "Comando incorrecto. Usa sudo systemctl status apache o sudo systemctl restart apache."
-
-				# Verificar si la misión está completada
-				if apache_estado_verificado and apache_reiniciado:
-					apache_mision_completada = true
-					start_dialog(apache_dialogs5)  # Mostrar mensaje final de la misión
-					mision_actual += 1  # Avanzar a la siguiente misión
+		var parts = command.split(" ")
+		if parts.size() < 3:
+			output = "Comando incompleto. Usa sudo systemctl status apache o sudo systemctl restart apache."
 		else:
-			# Comportamiento normal fuera del contexto de la misión
-			var parts = command.split(" ")
-			if parts.size() < 3:
-				output = "Comando incompleto. Usa sudo systemctl status apache o sudo systemctl restart apache."
-			else:
-				var action = parts[2].strip_edges()
-				if action == "status":
-					if "apache" in command:
+			var action = parts[2].strip_edges()
+			var comando = parts[3].strip_edges()
+			if action == "status":
+				if comando == "apache":
+					if mision_actual <= MISION_APACHE_2_RESTART:
+						output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/usr/lib/systemd/system/apache2.service; enabled; preset: enabled)\n Active: [color=red]failed[/color] (Result: exit-code) since " + fecha_actual + " CEST; 8s ago\n Duration: 47min 35.229s\n Process: 786f618a04744458eb65217e5851d59fe ExecStart=/usr/sbin/apachectl start (code=[color=red]exited[/color], status=[color=red]1/FAILURE[/color])\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 5825 (apache2)\n Status: \"\" active (running) since " + fecha_actual + " CEST; 8s ago\n Docs: man:apache2(8)\n Tasks: 1 (limit: 4915)\n Memory: 1.6M\n CPU: 13ms[/color]"
+						if mision_actual == MISION_APACHE_1_STATUS_FALLIDO:
+							mision_actual = MISION_APACHE_2_RESTART
+							start_dialog(apache_dialogs3)
+					else:
 						output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/lib/systemd/system/apache2.service; [color=green]enabled[/color]; vendor preset: [color=green]enabled[/color])\n Active: [color=green]active (running)[/color] since " + fecha_actual + " CEST; 23s ago\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 1234 (apache2)\n Tasks: 8 (limit: 4915)\n Memory: 10.5M\n CGroup: /system.slice/apache2.service\n ├─1234 /usr/sbin/apache2 -k start\n ├─1235 /usr/sbin/apache2 -k start\n └─1236 /usr/sbin/apache2 -k start[/color]"
-					else:
-						output = "Servicio no encontrado."
-				elif action == "restart":
-					if "apache" in command:
-						output = "Restarting Apache service..."
-					else:
-						output = "Servicio no encontrado."
+						if mision_actual == MISION_APACHE_3_STATUS_OK:
+							#TODO mision_actual = siguiente mision
+							start_dialog(apache_dialogs5)
+			elif action == "restart":
+				if comando == "apache":
+					output = "Restarting Apache service..."
+					if mision_actual == MISION_APACHE_2_RESTART:
+						mision_actual = MISION_APACHE_3_STATUS_OK
+						start_dialog(apache_dialogs4)
+					#else:
+						#output = "No se puede reiniciar Apache sin verificar su estado primero."
 				else:
 					output = "Comando incorrecto. Usa sudo systemctl status apache o sudo systemctl restart apache."
+
 
 	elif command.begins_with("sudo "):
 		if not sudo_authenticated:
