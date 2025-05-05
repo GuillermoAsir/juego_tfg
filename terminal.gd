@@ -144,7 +144,7 @@ var ping_completado = false  # Indica si el jugador ha completado el primer ping
 var ping_error = false # Indica si el jugador no puso el ping correcto.
 
 #Variables para saber en que misión está
-var mision_actual = 1
+var mision_actual = 5
 
 # Variables para el comando ping
 var ping_timer: Timer = null
@@ -345,31 +345,53 @@ func _input(event):
 			if is_instance_valid(ping_timer):
 				ping_timer.queue_free()
 				ping_timer = null
-			var summary = "^C\n---" + ping_host + " ping statistics---\n"
-			summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
-			var min_time = rtt_times.min() if rtt_times.size() > 0 else 0.0
-			var max_time = rtt_times.max() if rtt_times.size() > 0 else 0.0
-			var avg_func = func(a, b): return a + b
-			var avg_time = rtt_times.reduce(avg_func) / rtt_times.size() if rtt_times.size() > 0 else 0.0
-			var variance_func = func(a, b): return a + pow(b - avg_time, 2)
-			var mdev = sqrt(rtt_times.reduce(variance_func, 0.0) / rtt_times.size()) if rtt_times.size() > 0 else 0.0
-			summary += "rtt min/avg/max/mdev=%.3f/%.3f/%.3f/%.3f ms\n" % [min_time, avg_time, max_time, mdev]
-			history_text += summary
-			history.text = history_text
-			show_prompt()
 			
-			if mision_actual == 4:
-				if ping_host == "192.168.10.10":
-					mision_actual = 5
-					start_dialog(mission2_dialogs4)
-				else:
-					start_dialog(mission2_dialogs5)
-			elif mision_actual == 5 and ping_host == "192.168.10.1":
+			if mision_actual == 5 and ping_host == "192.168.10.1":
+				var transmitted = ping_seq - 1
+				var received = 0  # Ningún paquete recibido
+				var lost_percent = 100
+
+				var summary = "^C\n--- " + ping_host + " ping statistics ---\n"
+				summary += str(transmitted) + " packets transmitted, " + str(received) + " received, " + str(lost_percent) + "% packet loss\n"
+
+				# Como no hay RTTs, no se muestra la línea rtt
+				if rtt_times.size() > 0:
+					var min_time = rtt_times.min()
+					var max_time = rtt_times.max()
+					var avg_func = func(a, b): return a + b
+					var avg_time = rtt_times.reduce(avg_func) / rtt_times.size()
+					var variance_func = func(a, b): return a + pow(b - avg_time, 2)
+					var mdev = sqrt(rtt_times.reduce(variance_func, 0.0) / rtt_times.size())
+					summary += "rtt min/avg/max/mdev=%.3f/%.3f/%.3f/%.3f ms\n" % [min_time, avg_time, max_time, mdev]
+
+				history_text += summary
+				history.text = history_text
+				show_prompt()
 				mision_actual = 6
 				start_dialog(mission2_dialogs6)
-			elif mision_actual == 6 and ping_host == "192.168.10.1":
-				mision_actual = 7
-				start_dialog(mission2_dialogs7)
+			else:
+				var summary = "^C\n---" + ping_host + " ping statistics---\n"
+				summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
+				var min_time = rtt_times.min() if rtt_times.size() > 0 else 0.0
+				var max_time = rtt_times.max() if rtt_times.size() > 0 else 0.0
+				var avg_func = func(a, b): return a + b
+				var avg_time = rtt_times.reduce(avg_func) / rtt_times.size() if rtt_times.size() > 0 else 0.0
+				var variance_func = func(a, b): return a + pow(b - avg_time, 2)
+				var mdev = sqrt(rtt_times.reduce(variance_func, 0.0) / rtt_times.size()) if rtt_times.size() > 0 else 0.0
+				summary += "rtt min/avg/max/mdev=%.3f/%.3f/%.3f/%.3f ms\n" % [min_time, avg_time, max_time, mdev]
+				history_text += summary
+				history.text = history_text
+				show_prompt()
+				
+				if mision_actual == 4:
+					if ping_host == "192.168.10.10":
+						mision_actual = 5
+						start_dialog(mission2_dialogs4)
+					else:
+						start_dialog(mission2_dialogs5)
+				elif mision_actual == 6 and ping_host == "192.168.10.1":
+					mision_actual = 7
+					start_dialog(mission2_dialogs7)
 			return
 
 		# Procesar comandos normales
@@ -424,7 +446,6 @@ func get_full_path() -> String:
 		return ssh_user_base_path + normalized  # Ruta para el usuario remoto
 	else:
 		return BASE_PATH + normalized  # Ruta para el sistema local
-
 
 func normalize_path(path: String) -> String:
 	var parts = []
@@ -762,26 +783,17 @@ func process_command(command: String):
 				output = "Error: El archivo '" + filename + "' no existe."
 
 	elif command.begins_with("ping "):
-		var target = command.substr(5).strip_edges()
-		if target == "":
+		ping_host = command.substr(5).strip_edges()
+		if ping_host == "":
 			output = "Error: Debes proporcionar una dirección IP o nombre de host."
 		else:
-			ping_host = target
-			if is_valid_ip(target) or resolve_hostname(target):
-				ping_active = true
-				ping_seq = 1
-				rtt_times.clear()
-				ping_timer = Timer.new()
-				ping_timer.wait_time = 1.0
-				ping_timer.one_shot = false
-				add_child(ping_timer)
-				ping_timer.timeout.connect(_on_ping_timer_timeout)
-				ping_timer.start()
-				history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
-				history.text = history_text
-				show_prompt()
+			if is_valid_ip(ping_host) or resolve_hostname(ping_host):
+				if mision_actual == 5 and ping_host == "192.168.10.1":
+					_ping_erroneo()
+				else:
+					_ping_satisfactorio()
 			else:
-				output = "ping: " + target + ": Temporary failure in name resolution"
+				output = "ping: " + ping_host + ": Temporary failure in name resolution"
 
 	elif command.begins_with("sudo systemctl"):
 		# Verificar si el jugador está en el contexto de la misión Apache
@@ -1105,7 +1117,20 @@ func copy_file(src_path: String, dst_path: String):
 	print("Archivo copiado de %s a %s" % [src_path, dst_path])
 	return true
 
-
+func _ping_satisfactorio():
+	ping_active = true
+	ping_seq = 1
+	rtt_times.clear()
+	ping_timer = Timer.new()
+	ping_timer.wait_time = 1.0
+	ping_timer.one_shot = false
+	add_child(ping_timer)
+	ping_timer.timeout.connect(_on_ping_timer_timeout)
+	ping_timer.start()
+	history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
+	history.text = history_text
+	show_prompt()
+	
 func _on_ping_timer_timeout():
 	if not ping_active:
 		return
@@ -1115,6 +1140,33 @@ func _on_ping_timer_timeout():
 	history_text += "64 bytes from " + ping_host + ": icmp_seq=" + str(ping_seq) + " ttl=64 time=%.3f ms\n" % time
 	history.text = history_text
 	ping_seq += 1
+		 #Si el jugador detiene el ping con Ctrl+C, mostrar el cuarto diálogo
+	if not ping_active:
+		ping_completado = true
+	
+func _ping_erroneo():
+	ping_active = true
+	ping_seq = 1
+	rtt_times.clear()
+
+	ping_timer = Timer.new()
+	ping_timer.wait_time = 1.0
+	ping_timer.one_shot = false
+	add_child(ping_timer)
+	ping_timer.timeout.connect(_on_ping_timer_timeout_error)
+	ping_timer.start()
+
+	history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
+	history.text = history_text
+	show_prompt()
+	
+func _on_ping_timer_timeout_error():
+	if not ping_active:
+		return
+
+	history_text += "Request timeout for icmp_seq=" + str(ping_seq) + "\n"
+	ping_seq += 1
+	history.text = history_text
 		 #Si el jugador detiene el ping con Ctrl+C, mostrar el cuarto diálogo
 	if not ping_active:
 		ping_completado = true
