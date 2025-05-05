@@ -14,6 +14,10 @@ extends Control
 @onready var dialog_content = $ContainerDialogo/DialogBox/DialogContent  # Texto del diálogo
 @onready var dialog_arrow = $ContainerDialogo/DialogBox/DialogArrow  # Indicador gráfico (opcional)
 
+
+#Variables para saber en que misión está
+var mision_actual = 5
+
 const MISION_APACHE_1_STATUS_FALLIDO = 7
 const MISION_APACHE_2_RESTART = 8
 const MISION_APACHE_3_STATUS_OK = 9
@@ -46,10 +50,12 @@ var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/contabilidad/Documentos
 
 # Variables para controlar lo que se ha introducido por consola
 var comandos_introducidos: Array[String] = [
-	"cd home/usuario1/Documentos",
-	"ls",
+	#"cd home/usuario1/Documentos",
+	#"ls",
 	"ping 192.168.10.10",
-	"cat IPS_El_Bohío.txt",
+	#"cat IPS_El_Bohío.txt",
+	#"sudo systemctl status apache",
+	#"sudo systemctl restart apache",
 	]
 var comando_actual = null
 
@@ -132,17 +138,12 @@ var apache_dialogs4 = [
 	"Ahora puede volver a mirar el estado del servicio."
 ]
 var apache_dialogs5 = [
-	"Muy bien luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache."
+	"Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache."
 ]
 # Variables para controlar el flujo de la misión
 var esperando_ls = false  # Esperando que el jugador use `ls`
 var archivo_listado = false  # Indica si el jugador ha listado los archivos
 var archivo_leido = false  # Indica si el jugador ha usado `cat` en el archivo
-var ping_completado = false  # Indica si el jugador ha completado el primer ping
-var ping_error = false # Indica si el jugador no puso el ping correcto.
-
-#Variables para saber en que misión está
-var mision_actual = MISION_APACHE_1_STATUS_FALLIDO
 
 # Variables para el comando ping
 var ping_timer: Timer = null
@@ -393,6 +394,8 @@ func _input(event):
 
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
+			if ping_active:
+				return
 			var comando = current_command.strip_edges()
 			if comando != "":
 				comandos_introducidos.insert(0, comando)
@@ -791,6 +794,7 @@ func process_command(command: String):
 					_ping_satisfactorio()
 			else:
 				output = "ping: " + ping_host + ": Temporary failure in name resolution"
+		return
 
 	elif command.begins_with("sudo systemctl"):
 		var parts = command.split(" ")
@@ -902,6 +906,7 @@ func process_command(command: String):
 								)
 								file.close()
 								print("✅ Archivo 'Para_Pam.txt' creado")
+					
 				else:
 					print("ℹ️ La estructura de carpetas ya existe para:", user_sim_path)
 
@@ -927,7 +932,7 @@ func process_command(command: String):
 			show_prompt()
 		else:
 			output = "Not connected to an SSH session. Use this command only to disconnect remote sessions."
-
+		return
 	elif command.begins_with("cp "):
 			var args = command.substr(3).strip_edges().split(" ")
 			var recursive = false
@@ -1105,7 +1110,6 @@ func _ping_satisfactorio():
 	ping_timer.start()
 	history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
 	history.text = history_text
-	show_prompt()
 	
 func _on_ping_timer_timeout():
 	if not ping_active:
@@ -1116,25 +1120,19 @@ func _on_ping_timer_timeout():
 	history_text += "64 bytes from " + ping_host + ": icmp_seq=" + str(ping_seq) + " ttl=64 time=%.3f ms\n" % time
 	history.text = history_text
 	ping_seq += 1
-		 #Si el jugador detiene el ping con Ctrl+C, mostrar el cuarto diálogo
-	if not ping_active:
-		ping_completado = true
 	
 func _ping_erroneo():
 	ping_active = true
 	ping_seq = 1
 	rtt_times.clear()
-
 	ping_timer = Timer.new()
 	ping_timer.wait_time = 1.0
 	ping_timer.one_shot = false
 	add_child(ping_timer)
 	ping_timer.timeout.connect(_on_ping_timer_timeout_error)
 	ping_timer.start()
-
 	history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
 	history.text = history_text
-	show_prompt()
 	
 func _on_ping_timer_timeout_error():
 	if not ping_active:
@@ -1143,9 +1141,6 @@ func _on_ping_timer_timeout_error():
 	history_text += "Request timeout for icmp_seq=" + str(ping_seq) + "\n"
 	ping_seq += 1
 	history.text = history_text
-		 #Si el jugador detiene el ping con Ctrl+C, mostrar el cuarto diálogo
-	if not ping_active:
-		ping_completado = true
 
 func _on_save_button_pressed():
 	var file = FileAccess.open(current_file_being_edited, FileAccess.WRITE)
