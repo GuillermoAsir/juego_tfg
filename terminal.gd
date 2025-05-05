@@ -33,10 +33,6 @@ var cursor_pos = 0
 var cursor_visible = true
 var cursor_timer: Timer # Nodo Timer
 
-# Variables para el sistema de diálogo
-var dialog_active = false
-var current_dialog_index = 0
-
 #Comando sudo
 var sudo_password = "contraseña123"  # Contraseña predeterminada para sudo
 var sudo_authenticated = false      # Indica si el jugador ya ha ingresado la contraseña
@@ -45,7 +41,12 @@ var sudo_authenticated = false      # Indica si el jugador ya ha ingresado la co
 var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/contabilidad/Documentos/Privado/Para_Pam.txt"
 
 # Variables para controlar lo que se ha introducido por consola
-var comandos_introducidos: Array[String] = ["cd home/usuario1/Documentos"]
+var comandos_introducidos: Array[String] = [
+	"cd home/usuario1/Documentos",
+	"ls",
+	"ping 192.168.10.10",
+	"cat IPS_El_Bohío.txt",
+	]
 var comando_actual = null
 
 # Variables para controlar el flujo de la misión Apache
@@ -76,11 +77,12 @@ var ssh_allowed_domains = {
 }
 
 # Diálogos de la misión
+var dialogos = null  # Variable para almacenar el recurso
+
 var mission2_dialogs = [
 	"Excelente, ya te encuentras en el directorio donde está el archivo.\n" +
 	"Ahora falta listarlo para asegurarnos que se encuentra ahí.\n" +
-	"Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro.",
-	"probando"
+	"Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
 ]
 
 var mission2_dialogs2 = [
@@ -152,6 +154,7 @@ var ping_seq = 1
 var rtt_times = []
 
 func _ready():
+	#dialogos = load("res://dialogs.gd")
 	history.bbcode_enabled = true
 	nano_panel.visible = false
 	dialog_box.visible = false  # Inicializar el diálogo oculto
@@ -354,12 +357,23 @@ func _input(event):
 			history_text += summary
 			history.text = history_text
 			show_prompt()
+			
+			if mision_actual == 4:
+				if ping_host == "192.168.10.10":
+					mision_actual = 5
+					start_dialog(mission2_dialogs4)
+				else:
+					start_dialog(mission2_dialogs5)
+			elif mision_actual == 5 and ping_host == "192.168.10.1":
+				mision_actual = 6
+				start_dialog(mission2_dialogs6)
+			elif mision_actual == 6 and ping_host == "192.168.10.1":
+				mision_actual = 7
+				start_dialog(mission2_dialogs7)
 			return
 
 		# Procesar comandos normales
 		if event.keycode == KEY_ENTER:
-			if dialog_active:
-				advance_dialog()
 			var comando = current_command.strip_edges()
 			if comando != "":
 				comandos_introducidos.insert(0, comando)
@@ -448,8 +462,8 @@ func process_command(command: String):
 			if current_path == "/home/usuario1/Documentos" and not archivo_listado:
 				esperando_ls = true
 				if mision_actual == 1:
-					start_dialog(mission2_dialogs)
 					mision_actual = 2
+					start_dialog(mission2_dialogs)
 		else:
 			output = "No existe el directorio: " + target
 
@@ -638,8 +652,6 @@ func process_command(command: String):
 		await get_tree().create_timer(1.5).timeout
 		output += "[color=green]Instalación completada. Se han actualizado 5 paquetes.[/color]"
 
-
-
 	elif command == "ls":
 		var full_path = get_full_path()
 		var dir = DirAccess.open(full_path)
@@ -657,8 +669,8 @@ func process_command(command: String):
 					archivo_listado = true
 					esperando_ls = false
 					if mision_actual == 2:
-						start_dialog(mission2_dialogs2)
 						mision_actual = 3
+						start_dialog(mission2_dialogs2)
 		else:
 			output = "No se pudo abrir el directorio."
 
@@ -742,8 +754,8 @@ func process_command(command: String):
 					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
 						archivo_leido = true
 						if mision_actual == 3:
-							start_dialog(mission2_dialogs3)
 							mision_actual = 4
+							start_dialog(mission2_dialogs3)
 				else:
 					output = "Error: No se pudo abrir el archivo."
 			else:
@@ -768,19 +780,6 @@ func process_command(command: String):
 				history_text += "\nPING " + ping_host + " (" + ping_host + ") 56(84) bytes of data.\n"
 				history.text = history_text
 				show_prompt()
-
-				if mision_actual == 4 and target == "192.168.10.10":
-					start_dialog(mission2_dialogs4)
-					mision_actual = 5
-				elif mision_actual == 4:
-					start_dialog(mission2_dialogs5)
-				elif mision_actual == 5 and target == "192.168.10.1":
-					start_dialog(mission2_dialogs6)
-					mision_actual = 6
-				elif mision_actual == 6 and target == "192.168.10.1":
-					start_dialog(mission2_dialogs7)
-					mision_actual = 7
-					advance_dialog()
 			else:
 				output = "ping: " + target + ": Temporary failure in name resolution"
 
@@ -1008,6 +1007,7 @@ func process_command(command: String):
 		history_text += "\n" + output
 		history.text = history_text
 	show_prompt()
+
 #Función que borre de forma recursiva los directorios
 func remove_directory_recursive(path):
 	var dir = DirAccess.open(path)
@@ -1133,27 +1133,6 @@ func _on_save_button_pressed():
 func start_dialog(dialogs: Array):
 	dialog_box.start_dialog(dialogs)
 	dialog_box.visible = true
-	#dialog_active = true
-	#current_dialog_index = 0
-	#mission2_dialogs = dialogs
-	#show_dialog()
-
-func show_dialog():
-	dialog_box.visible = true
-	dialog_content.text = mission2_dialogs[current_dialog_index]
-
-func advance_dialog():
-	if dialog_active:
-		current_dialog_index += 1
-		if current_dialog_index < mission2_dialogs.size():
-			show_dialog()
-		else:
-			close_dialog()
-
-func close_dialog():
-	dialog_active = false
-	dialog_box.visible = false
-	dialog_content.text = ""
 
 # Funciones de validación para el comando ping
 func is_valid_ip(ip: String) -> bool:
