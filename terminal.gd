@@ -1240,3 +1240,4 @@ func autocomplete_command():
 		# reconstruir prompt limpio para que el jugador siga escribiendo
 		var prompt_line = USER_COLOR + ":" + "[color=skyblue]" + current_path + "[/color]" + PROMPT_BASE + " " + current_command
 		history.text += "\n" + prompt_line  # añade línea de prompt SIN tocar current_command
+#caca
