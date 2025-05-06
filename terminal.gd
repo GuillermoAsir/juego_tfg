@@ -138,7 +138,14 @@ var apache_dialogs4 = [
 	"Ahora puede volver a mirar el estado del servicio."
 ]
 var apache_dialogs5 = [
-	"Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache."
+	"Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache. \n"+
+	" Departamento de Marqueting: Hola soy Miguel, queria pediros si podriáis realizar una copia a la carpeta llamada"+
+	"privado esta situado en Documentos, es importante para mi y no sais unos cotillas nada!"
+]
+
+var ssh_cp_dialogs1 = [
+	"Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de  \n"+
+	"solo tienes que ir a la terminal y escribir ssh contabilidad@<ip del equipo>. Recuerda donde están guardas las Ips."
 ]
 # Variables para controlar el flujo de la misión
 var esperando_ls = false  # Esperando que el jugador use `ls`
@@ -462,31 +469,47 @@ func process_command(command: String):
 		var target = command.substr(3).strip_edges()
 		var new_path = current_path
 
+		print("Comando recibido: cd " + target)
+
 		if target == ".":
+			print("Directorio actual, no se cambia nada.")
 			pass
 		elif target == "..":
+			print("Subiendo un nivel en el directorio.")
 			if current_path != "/":
 				var parts = current_path.split("/")
 				if parts.size() > 0:
 					parts.remove_at(parts.size() - 1)
 					new_path = "/" + "/".join(parts) if parts.size() > 0 else "/"
+					print("Nuevo directorio después de subir: " + new_path)
 				else:
 					new_path = "/"
+					print("Nuevo directorio: /")
 		elif target == "/":
+			print("Directorio raíz seleccionado.")
 			new_path = "/"
 		else:
 			new_path = target if target.begins_with("/") else current_path.rstrip("/") + "/" + target
+			print("Nuevo directorio absoluto o relativo: " + new_path)
 
 		var full_path = BASE_PATH + normalize_path(new_path)
+		print("Ruta completa normalizada: " + full_path)
+
 		if DirAccess.dir_exists_absolute(full_path):
+			print("El directorio existe.")
 			current_path = normalize_path(new_path)
+			print("Ruta actualizada a: " + current_path)
+
 			if current_path == "/home/usuario1/Documentos" and not archivo_listado:
+				print("Entrando en la misión 2.")
 				esperando_ls = true
 				if mision_actual == 1:
 					mision_actual = 2
 					start_dialog(mission2_dialogs)
 		else:
+			print("DEBUG: No existe el directorio: ", full_path)
 			output = "No existe el directorio: " + target
+
 
 	elif command == "date":
 		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
@@ -880,21 +903,25 @@ func process_command(command: String):
 				if not dir.dir_exists(user_sim_path):
 					dir.make_dir(user_sim_path)
 					dir.change_dir(user_sim_path)
-					for folder in ["home", "etc", "var", "bin", "caca"]:
-						dir.make_dir(folder)
-					dir.make_dir("home/" + user)
-					dir.make_dir("home/" + user + "/Documentos")
-					dir.make_dir("home/" + user + "/Descargas")
-					dir.make_dir("home/" + user + "/Escritorio")
-					dir.make_dir("home/" + user + "/Documentos/Privado")
-					dir.make_dir("home/" + user + "/Documentos/Privado/caca")
-					dir.change_dir("..")
 
+					# Crear carpetas base sin incluir "home"
+					for folder in ["etc", "var", "bin", "caca"]:
+						dir.make_dir(folder)
+
+					# Crear estructura del usuario directamente (sin anidarlo en /home)
+					dir.make_dir(user)
+					dir.make_dir(user + "/Documentos")
+					dir.make_dir(user + "/Descargas")
+					dir.make_dir(user + "/Escritorio")
+					dir.make_dir(user + "/Documentos/Privado")
+					dir.make_dir(user + "/Documentos/Privado/caca")
+
+					dir.change_dir("..")  # Volver a user://
 					print("✅ Estructura de carpetas creada para:", user_sim_path)
 
 					# Crear archivo específico solo para contabilidad
 					if user == "contabilidad":
-						var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/" + user + "/Documentos/Privado/Para_Pam.txt"
+						var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/" + user + "/Documentos/Privado/Para_Pam.txt"
 						if not FileAccess.file_exists(para_pam_file_path):
 							var file = FileAccess.open(para_pam_file_path, FileAccess.WRITE)
 							if file:
@@ -907,7 +934,7 @@ func process_command(command: String):
 								)
 								file.close()
 								print("✅ Archivo 'Para_Pam.txt' creado")
-					
+
 				else:
 					print("ℹ️ La estructura de carpetas ya existe para:", user_sim_path)
 
@@ -915,7 +942,7 @@ func process_command(command: String):
 				ssh_active = true
 				ssh_user = user
 				ssh_host = host
-				current_path = "/home/" + user
+				current_path = "/"  # Empezamos desde la raíz del sistema remoto
 			else:
 				output = "Error accediendo al sistema de archivos."
 		else:
