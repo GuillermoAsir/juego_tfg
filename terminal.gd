@@ -24,11 +24,12 @@ const MISION_APACHE_3_STATUS_OK = 9
 
 # Variables principales
 var current_command = ""
+var previous_path = ""
 var current_path = "/"  # Ruta relativa dentro de ubuntu_sim
 const BASE_PATH = "user://ubuntu_sim"  # Ruta real base
 const BASE_PATH_CONTABILIDAD = "user://contabilidad_sim"  # Ruta base para el usuario contabilidad
 const BASE_PATH_VENTAS = "user://ventas_sim"  # Ruta base para el usuario ventas (futuro)
-var ssh_user_base_path = ""  # Ruta base para el usuario remoto (por ejemplo, "user://contabilidad")
+var ssh_user_base_path = "user://contabilidad_sim"  # Ruta base para el usuario remoto (por ejemplo, "user://contabilidad")
 var current_file_being_edited = ""
 var mision2_completada = false
 const USER_COLOR = "[color=green]usuario@usuario[/color]"
@@ -473,7 +474,6 @@ func process_command(command: String):
 
 		if target == ".":
 			print("Directorio actual, no se cambia nada.")
-			pass
 		elif target == "..":
 			print("Subiendo un nivel en el directorio.")
 			if current_path != "/":
@@ -492,7 +492,11 @@ func process_command(command: String):
 			new_path = target if target.begins_with("/") else current_path.rstrip("/") + "/" + target
 			print("Nuevo directorio absoluto o relativo: " + new_path)
 
-		var full_path = BASE_PATH + normalize_path(new_path)
+		# 🔁 Usamos la base correcta según el modo (SSH o local)
+		var base_path_actual = ssh_user_base_path if ssh_active else BASE_PATH
+
+		var full_path = base_path_actual + normalize_path(new_path)
+
 		print("Ruta completa normalizada: " + full_path)
 
 		if DirAccess.dir_exists_absolute(full_path):
@@ -500,6 +504,7 @@ func process_command(command: String):
 			current_path = normalize_path(new_path)
 			print("Ruta actualizada a: " + current_path)
 
+			# Misión 2 (opcional, solo si ya usabas esta lógica)
 			if current_path == "/home/usuario1/Documentos" and not archivo_listado:
 				print("Entrando en la misión 2.")
 				esperando_ls = true
@@ -509,6 +514,7 @@ func process_command(command: String):
 		else:
 			print("DEBUG: No existe el directorio: ", full_path)
 			output = "No existe el directorio: " + target
+
 
 
 	elif command == "date":
@@ -786,23 +792,36 @@ func process_command(command: String):
 
 	elif command.begins_with("cat "):
 		var filename = command.substr(4).strip_edges()
+		print("Comando recibido: cat " + filename)
+
 		if filename == "":
 			output = "Error: Debes proporcionar el nombre de un archivo."
 		else:
-			var file_path = get_full_path() + "/" + filename
+			# 🔧 Determina la ruta base real según si estás en SSH
+			var base_path_actual = ssh_user_base_path if ssh_active else BASE_PATH
+			var file_path = base_path_actual + normalize_path(current_path) + "/" + filename
+
+			print("Ruta completa del archivo a leer: " + file_path)
+
 			if FileAccess.file_exists(file_path):
+				print("El archivo existe. Intentando abrirlo...")
 				var file = FileAccess.open(file_path, FileAccess.READ)
 				if file:
 					output = file.get_as_text()
 					file.close()
+					print("Contenido del archivo leído con éxito.")
+					
+					# Lógica específica de misión
 					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
 						archivo_leido = true
 						if mision_actual == 3:
 							mision_actual = 4
 							start_dialog(mission2_dialogs3)
 				else:
+					print("Error al abrir el archivo.")
 					output = "Error: No se pudo abrir el archivo."
 			else:
+				print("Archivo no encontrado: " + file_path)
 				output = "Error: El archivo '" + filename + "' no existe."
 
 	elif command.begins_with("ping "):
@@ -904,36 +923,47 @@ func process_command(command: String):
 					dir.make_dir(user_sim_path)
 					dir.change_dir(user_sim_path)
 
-					# Crear carpetas base sin incluir "home"
+					# Crear carpetas base
 					for folder in ["etc", "var", "bin", "caca"]:
 						dir.make_dir(folder)
 
-					# Crear estructura del usuario directamente (sin anidarlo en /home)
+					# Estructura del usuario
 					dir.make_dir(user)
 					dir.make_dir(user + "/Documentos")
 					dir.make_dir(user + "/Descargas")
 					dir.make_dir(user + "/Escritorio")
 					dir.make_dir(user + "/Documentos/Privado")
 					dir.make_dir(user + "/Documentos/Privado/caca")
+					dir.make_dir(user + "/Documentos/David/")
+					dir.make_dir(user + "/Documentos/David/Subnormal")
 
 					dir.change_dir("..")  # Volver a user://
 					print("✅ Estructura de carpetas creada para:", user_sim_path)
 
-					# Crear archivo específico solo para contabilidad
+					# Crear archivo solo para contabilidad
 					if user == "contabilidad":
 						var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/" + user + "/Documentos/Privado/Para_Pam.txt"
-						if not FileAccess.file_exists(para_pam_file_path):
+						print("DEBUG: Archivo creado en: ", para_pam_file_path)
+
+						if FileAccess.file_exists(para_pam_file_path):
+							print("ℹ️ El archivo 'Para_Pam.txt' ya existe.")
+						else:
 							var file = FileAccess.open(para_pam_file_path, FileAccess.WRITE)
 							if file:
-								file.store_string(
+								var content = (
 									"Querida Pam,\n\n" +
 									"Sé que dentro de poco te casarás con nuestro jefe. Sé que estoy siendo egoísta, pero no puedo olvidar lo que pasó entre nosotros aquella noche; nunca lo podré olvidar.\n\n" +
 									"Marchémonos juntos y dejemos atrás estas oficinas. No me importa adónde vayamos, solo que sea a tu lado. No puedo dejar de pensar en ti, y sé que tú también piensas en mí.\n\n" +
 									"Espero tu respuesta.\n\n" +
 									"# Fin del archivo"
 								)
+								file.store_string(content)
+								file.flush()  # Forzar escritura inmediata
 								file.close()
-								print("✅ Archivo 'Para_Pam.txt' creado")
+								print("✅ Archivo 'Para_Pam.txt' creado con éxito.")
+							else:
+								print("❌ Error: No se pudo crear el archivo 'Para_Pam.txt'")
+								output += "\n⚠️ Error interno al crear el archivo de Pam."
 
 				else:
 					print("ℹ️ La estructura de carpetas ya existe para:", user_sim_path)
@@ -942,7 +972,7 @@ func process_command(command: String):
 				ssh_active = true
 				ssh_user = user
 				ssh_host = host
-				current_path = "/"  # Empezamos desde la raíz del sistema remoto
+				current_path = "/"  # Empezamos desde raíz del sistema remoto
 			else:
 				output = "Error accediendo al sistema de archivos."
 		else:
