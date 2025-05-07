@@ -16,7 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = 1
+var mision_actual = 9
 
 const MISION_APACHE_1_STATUS_FALLIDO = 7
 const MISION_APACHE_2_RESTART = 8
@@ -75,7 +75,11 @@ var ssh_active = false  # Indica si el jugador está conectado por SSH
 var ssh_host = ""       # Guarda el nombre del host al que está conectado
 var ssh_user = ""       # Guarda el nombre de usuario
 var entorno_actual = "local"  # Puede ser "local" o "remoto"
-
+#variables misión ssh_copia
+var esperando_copia_privado = false  # Esperando que haga `cp`
+var copia_realizada = false         # Se ha hecho la copia
+var ls_hecho_despues_de_copia = false
+const MISION_SSH_COPIA_PRIVADO = 10
 #Lista de IPs permitidas
 var ssh_allowed_ips = ["192.168.10.100", "192.168.10.101", "192.168.10.102"]
 
@@ -139,15 +143,33 @@ var apache_dialogs4 = [
 	"Ahora puede volver a mirar el estado del servicio."
 ]
 var apache_dialogs5 = [
-	"Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache. \n"+
-	" Departamento de Marqueting: Hola soy Miguel, queria pediros si podriáis realizar una copia a la carpeta llamada"+
-	"privado esta situado en Documentos, es importante para mi y no sais unos cotillas nada!"
-]
-
-var ssh_cp_dialogs1 = [
-	"Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de  \n"+
+	"Viejo: Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache. \n",
+	" Departamento de Contabilidad: Hola soy Miguel, queria pediros si podriáis realizar una copia a la carpeta llamada\n"+
+	"Privado esta situado en Documentos, es importante para mi y no sais unos cotillas nada!",
+	"Viejo: Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de  \n"+
 	"solo tienes que ir a la terminal y escribir ssh contabilidad@<ip del equipo>. Recuerda donde están guardas las Ips."
 ]
+
+#El jugador se conecta por ssh a contabilidad@192.16.10.100 salta este dialogo:
+var ssh_cp_dialogs1 =[
+		"Viejo: Muy bien ya estás dentro! busca el fichero y realiza la copia"
+]
+#El jugador tiene que usar ls si no le salta el dialogo ssh_cp_dialogs3: 
+var ssh_cp_dialogs2 = [
+	"Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia."
+]
+#Si el jugador ha realizado el comando ls en la ruta contabilidad\Documentos y a hecho cp en el directorio carpeta:
+var ssh_cp_dialogs3 = [
+	"Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'."
+]
+#Si el jugador  déspùes de empezar el apache_dialogs5 usa el cat en el fichero Para_Pam le salta este dialogo:
+var ssh_cp_dialogs4 =[
+	"Viejo: Pero serás cotilla!!...\n "+
+	"Cuenta cuenta..."
+]
+
+
+#Fin de la misión ssh_copia
 # Variables para controlar el flujo de la misión
 var esperando_ls = false  # Esperando que el jugador use `ls`
 var archivo_listado = false  # Indica si el jugador ha listado los archivos
@@ -713,7 +735,18 @@ func process_command(command: String):
 			for file_name in files:
 				output += "[color=white]" + file_name + "[/color] "
 
-			# Verificar si el jugador ha listado el archivo correcto
+			# Misión SSH + cp
+			if mision_actual == MISION_SSH_COPIA_PRIVADO and current_path == "/contabilidad/Documentos":
+				if "Privado.old" in dirs:
+					copia_realizada = true
+					ls_hecho_despues_de_copia = true
+					output += "\nViejo: Muy bien, ahora sal del ordenador del empleado con 'exit'."
+					start_dialog(ssh_cp_dialogs3)
+				elif not copia_realizada:
+					output += "\nViejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia."
+					start_dialog(ssh_cp_dialogs2)
+
+			# Misión anterior
 			if current_path == "/home/usuario1/Documentos" and esperando_ls and not archivo_listado:
 				if "IPS_El_Bohío.txt" in files:
 					archivo_listado = true
@@ -797,11 +830,9 @@ func process_command(command: String):
 		if filename == "":
 			output = "Error: Debes proporcionar el nombre de un archivo."
 		else:
-			# 🔧 Determina la ruta base real según si estás en SSH
-			var base_path_actual = ssh_user_base_path if ssh_active else BASE_PATH
-			var file_path = base_path_actual + normalize_path(current_path) + "/" + filename
-
-			print("Ruta completa del archivo a leer: " + file_path)
+			# 🔧 Usamos get_full_path() para obtener la ruta correcta (local o remota)
+			var file_path = get_full_path() + "/" + filename
+			print("DEBUG: Ruta completa del archivo a leer: " + file_path)
 
 			if FileAccess.file_exists(file_path):
 				print("El archivo existe. Intentando abrirlo...")
@@ -810,13 +841,20 @@ func process_command(command: String):
 					output = file.get_as_text()
 					file.close()
 					print("Contenido del archivo leído con éxito.")
-					
-					# Lógica específica de misión
+
+					# Lógica específica de misiones
+
+					# Misión Apache - Archivo IPS_El_Bohío.txt
 					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
 						archivo_leido = true
 						if mision_actual == 3:
 							mision_actual = 4
 							start_dialog(mission2_dialogs3)
+
+					# Misión SSH - Archivo Para_Pam.txt
+					if filename == "Para_Pam.txt":
+						if mision_actual == MISION_SSH_COPIA_PRIVADO:
+							start_dialog(ssh_cp_dialogs4)  # Diálogo de cotilla
 				else:
 					print("Error al abrir el archivo.")
 					output = "Error: No se pudo abrir el archivo."
@@ -905,7 +943,6 @@ func process_command(command: String):
 			await get_tree().create_timer(2.0).timeout  # Simular tiempo de conexión
 			output += "\n¡Bienvenido, " + user + "! Ahora estás conectado al servidor."
 
-			# Asignar la ruta base según el usuario
 			match user:
 				"contabilidad":
 					ssh_user_base_path = BASE_PATH_CONTABILIDAD
@@ -915,7 +952,7 @@ func process_command(command: String):
 					output = "Acceso denegado. Usuario no válido."
 					return
 
-			# Crear la carpeta del usuario remoto si no existe
+			# Crear estructura si no existe
 			var user_sim_path = user + "_sim"
 			var dir = DirAccess.open("user://")
 			if dir:
@@ -923,19 +960,15 @@ func process_command(command: String):
 					dir.make_dir(user_sim_path)
 					dir.change_dir(user_sim_path)
 
-					# Crear carpetas base
-					for folder in ["etc", "var", "bin", "caca"]:
+					for folder in ["etc", "var", "bin"]:
 						dir.make_dir(folder)
 
-					# Estructura del usuario
 					dir.make_dir(user)
 					dir.make_dir(user + "/Documentos")
 					dir.make_dir(user + "/Descargas")
 					dir.make_dir(user + "/Escritorio")
 					dir.make_dir(user + "/Documentos/Privado")
 					dir.make_dir(user + "/Documentos/Privado/caca")
-					dir.make_dir(user + "/Documentos/David/")
-					dir.make_dir(user + "/Documentos/David/Subnormal")
 
 					dir.change_dir("..")  # Volver a user://
 					print("✅ Estructura de carpetas creada para:", user_sim_path)
@@ -958,7 +991,7 @@ func process_command(command: String):
 									"# Fin del archivo"
 								)
 								file.store_string(content)
-								file.flush()  # Forzar escritura inmediata
+								file.flush()
 								file.close()
 								print("✅ Archivo 'Para_Pam.txt' creado con éxito.")
 							else:
@@ -973,6 +1006,12 @@ func process_command(command: String):
 				ssh_user = user
 				ssh_host = host
 				current_path = "/"  # Empezamos desde raíz del sistema remoto
+
+				# Si estábamos en la misión Apache, iniciamos esta nueva misión
+				if mision_actual == MISION_APACHE_3_STATUS_OK:
+					mision_actual = MISION_SSH_COPIA_PRIVADO
+					start_dialog(ssh_cp_dialogs1)
+
 			else:
 				output = "Error accediendo al sistema de archivos."
 		else:
@@ -981,61 +1020,78 @@ func process_command(command: String):
 #Para salir del SSH
 	elif command == "exit":
 		if ssh_active:
-			output = "Connection to " + ssh_host + " closed."
-			ssh_active = false  # Desactivar el estado SSH
-			ssh_host = ""       # Limpiar el host
-			ssh_user = ""       # Limpiar el usuario
-			ssh_user_base_path = ""  # Limpiar la ruta base del usuario remoto
-			current_path = "/"   # Volver al sistema local
+			# Solo avanzar si hizo la copia y verificó con ls
+			if mision_actual == MISION_SSH_COPIA_PRIVADO:
+				if copia_realizada and ls_hecho_despues_de_copia:
+					output = "Connection to " + ssh_host + " closed."
+					mision_actual += 1  # Pasar a la siguiente misión
+					start_dialog(ssh_cp_dialogs3)
+				elif copia_realizada and not ls_hecho_despues_de_copia:
+					output = "Connection to " + ssh_host + " closed."
+					start_dialog(ssh_cp_dialogs2)
+				else:
+					output = "Connection to " + ssh_host + " closed."
+			else:
+				output = "Connection to " + ssh_host + " closed."
+
+			# Limpiar estado SSH
+			ssh_active = false
+			ssh_host = ""
+			ssh_user = ""
+			ssh_user_base_path = ""
+			current_path = "/"  # Regresar al sistema local
 			show_prompt()
 		else:
 			output = "Not connected to an SSH session. Use this command only to disconnect remote sessions."
 		return
+
 	elif command.begins_with("cp "):
-			var args = command.substr(3).strip_edges().split(" ")
-			var recursive = false
+		var args = command.substr(3).strip_edges().split(" ")
+		var recursive = false
 
-			# Detectar si se usó la opción -r
-			if args[0] == "-r":
-				recursive = true
-				args.remove_at(0)
+		# Detectar si se usó la opción -r
+		if args.size() > 0 and args[0] == "-r":
+			recursive = true
+			args.remove_at(0)
 
-			if args.size() < 2:
-				output = "Uso: cp [-r] <origen> <destino>"
+		if args.size() < 2:
+			output = "Uso: cp [-r] <origen> <destino>"
+			return
+
+		var source = args[0]
+		var destination = args[1]
+		var source_path = get_full_path() + "/" + source
+		var dest_path = get_full_path() + "/" + destination
+
+		var dir = DirAccess.open(get_full_path())
+		if not dir:
+			output = "No se pudo acceder al directorio actual"
+			return
+
+		if dir.dir_exists(source):
+			if not recursive:
+				output = "cp: omitiendo directorio '" + source + "'. Usa -r para copiar recursivamente."
 			else:
-				var source = args[0]
-				var destination = args[1]
-				var source_path = get_full_path() + "/" + source
-				var dest_path = get_full_path() + "/" + destination
+				copy_directory(source_path, dest_path)
+				output = "Directorio copiado de " + source + " a " + destination
 
-				var dir = DirAccess.open(get_full_path())
-				if not dir:
-					output = "No se pudo acceder al directorio actual"
-				elif dir.dir_exists(source):
-					if not recursive:
-						output = "cp: omitiendo directorio '" + source + "'. Usa -r para copiar recursivamente."
-					else:
-						# Llamamos a la función recursiva 'copy_directory' para copiar directorios
-						copy_directory(source_path, dest_path)
-						output = "Directorio copiado de " + source + " a " + destination
-				elif FileAccess.file_exists(source_path):
-					# Copiar archivo simple
-					var source_file = FileAccess.open(source_path, FileAccess.READ)
-					if source_file:
-						var content = source_file.get_as_text()
-						source_file.close()
+				if mision_actual == MISION_SSH_COPIA_PRIVADO and source == "Privado" and destination == "Privado.old":
+					copia_realizada = true
+					print("DEBUG: Carpeta 'Privado' copiada como 'Privado.old'")
+		elif FileAccess.file_exists(source_path):
+			var source_file = FileAccess.open(source_path, FileAccess.READ)
+			var content = source_file.get_as_text()
+			source_file.close()
 
-						var dest_file = FileAccess.open(dest_path, FileAccess.WRITE)
-						if dest_file:
-							dest_file.store_string(content)
-							dest_file.close()
-							output = "Archivo copiado de " + source + " a " + destination
-						else:
-							output = "cp: no se pudo escribir en el archivo de destino"
-					else:
-						output = "cp: no se pudo leer el archivo de origen"
-				else:
-					output = "cp: archivo o directorio no encontrado: " + source
+			var dest_file = FileAccess.open(dest_path, FileAccess.WRITE)
+			if dest_file:
+				dest_file.store_string(content)
+				dest_file.close()
+				output = "Archivo copiado de " + source + " a " + destination
+			else:
+				output = "cp: no se pudo escribir en el archivo de destino"
+		else:
+			output = "cp: archivo o directorio no encontrado: " + source
 
 	elif command == "clear":
 		history_text = ""
