@@ -81,6 +81,20 @@ const MISION_SSH_COPIA_PRIVADO = 10
 var copia_realizada = false
 var ls_hecho_despues_de_copia = false
 
+# Estado de la misión "Limpiar espacio"
+const MISION_SSH_LIMPIAR = 11
+var df_ejecutado = false
+var apt_clean_ejecutado = false
+var apt_autoclean_ejecutado = false
+var apt_autoremove_ejecutado = false
+var tmp_limpio = false
+var var_tmp_limpio = false
+var descargas_borradas = false
+var papelera_borrada = false
+# Estado de la nueva misión SSH + Limpiar disco
+var df_hecho = false
+
+
 #Lista de IPs permitidas
 var ssh_allowed_ips = ["192.168.10.100", "192.168.10.101", "192.168.10.102"]
 
@@ -161,14 +175,48 @@ var ssh_cp_dialogs2 = [
 ]
 #Si el jugador ha realizado el comando ls en la ruta contabilidad\Documentos y a hecho cp en el directorio carpeta:
 var ssh_cp_dialogs3 = [
-	"Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'."
+	"Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'.",
+	"Departamento de contabilidad: Hola, le hablamos desde el departamento de contabilidad. No podemos guardar nada más en el ordenador. Un saludo",
+	"Viejo: Usaremos de nuevo el servicio SSH al equipo, empieza a conectarte"
 ]
 #Si el jugador  déspùes de empezar el apache_dialogs5 usa el cat en el fichero Para_Pam le salta este dialogo:
 var ssh_cp_dialogs4 =[
 	"Viejo: Pero serás cotilla!!...\n "+
 	"Cuenta cuenta..."
 ]
-
+#Dialogos misión ssh_limpiar
+var ssh_limpiar_dialogs = {
+	"df_alto": [
+		"Viejo: ¡Un 98% usado! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... creo que ese soy yo. Je je.\nTodo tiene solución. Empezamos con:\nsudo apt-get clean\nContraseña: SudC0nt"
+	],
+	"apt_get_clean_ok": [
+		"Viejo: Buen trabajo. Ahora vamos a eliminar los paquetes obsoletos con:\nsudo apt-get autoclean"
+	],
+	"apt_get_autoclean_ok": [
+		"Viejo: Bien hecho. Siguiente paso: sudo apt-get autoremove"
+	],
+	"apt_get_autoremove_ok": [
+		"Viejo: Excelente. Ahora borramos archivos temporales:\nsudo rm -rf /tmp/*"
+	],
+	"tmp_copiado_ok": [
+		"Viejo: Perfecto. Ahora ejecuta:\nsudo rm -rf /var/tmp/*"
+	],
+	"var_tmp_copiado_ok": [
+		"Viejo: Muy bien. Ahora borra las descargas del usuario con:\nrm -rf /home/contabilidad/Descargas/*"
+	],
+	"descargas_borradas_ok": [
+		"Viejo: Para finalizar, limpiamos la papelera con:\nrm -rf /home/contabilidad/.local/share/Trash/files/*\ny\nrm -rf /home/contabilidad/.local/share/Trash/info/*"
+	],
+	"papelera_borrada_ok": [
+		"Viejo: ¡Perfecto! Ahora verifica el uso del disco nuevamente con:\ndf -h /home/contabilidad"
+	],
+	"df_bajo": [
+		"Viejo: ¡Un 70%! Eso ya es otra cosa. Ya podrán volver a descargarse películas... jeje, guiño guiño. Ahora puedes salir del servidor con 'exit'.",
+	],
+	"finalizada": [
+		"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!\nMisión terminada: Liberar espacio.\nFin del día."
+	]
+}
 
 #Fin de la misión ssh_copia
 # Variables para controlar el flujo de la misión
@@ -529,8 +577,6 @@ func prompt_password(prompt_text: String) -> String:
 	return password
 
 
-
-
 func get_full_path() -> String:
 	# Eliminar espacios en blanco al inicio y final de la ruta
 	var normalized = current_path.strip_edges()
@@ -613,39 +659,45 @@ func process_command(command: String):
 			output = "No existe el directorio: " + target
 
 	elif command == "sudo apt-get clean":
-		var password = await prompt_password("Introduce la contraseña de sudo:")
-		if password == "1234":
-			output = "[color=white]Leyendo lista de paquetes...\n[/color]"
-			await get_tree().create_timer(0.8).timeout
-			output += "[color=white]Limpiando caché de paquetes descargados...\n[/color]"
-			await get_tree().create_timer(1.2).timeout
+			var password = await prompt_password("Introduce la contraseña de sudo:")
+			if password == "1234":
+				output = "[color=white]Leyendo lista de paquetes...\n[/color]"
+				await get_tree().create_timer(0.8).timeout
+				output += "[color=white]Limpiando caché de paquetes descargados...\n[/color]"
+				await get_tree().create_timer(1.2).timeout
 
-			var archives_path = "user://ubuntu_sim/var/cache/apt/archives"
-			var partial_path = "user://ubuntu_sim/var/cache/apt/archives/partial"
+				var archives_path = "user://ubuntu_sim/var/cache/apt/archives"
+				var partial_path = "user://ubuntu_sim/var/cache/apt/archives/partial"
 
-			var count = delete_files_in(archives_path)
-			count += delete_files_in(partial_path)
+				var count = delete_files_in(archives_path)
+				count += delete_files_in(partial_path)
 
-			if count == 0:
-				output += "[color=yellow]No hay archivos en caché que limpiar.[/color]\n"
+				if count == 0:
+					output += "[color=yellow]No hay archivos en caché que limpiar.[/color]\n"
+				else:
+					output += "[color=green]Caché limpiada correctamente. Archivos eliminados: " + str(count) + "[/color]\n"
 			else:
-				output += "[color=green]Caché limpiada correctamente. Archivos eliminados: " + str(count) + "[/color]"
+				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
-			# Autoclean
-			output += "[color=white] Limpiando archivos de caché obsoletos...\n[/color]"
-			await get_tree().create_timer(1.0).timeout
-			var count_autoclean = delete_files_in("user://ubuntu_sim/var/cache/apt/archives")
-			output += "[color=green]Archivos obsoletos eliminados: " + str(count_autoclean) + "[/color]"
+	elif command == "sudo apt-get autoclean":
+			var password = await prompt_password("Introduce la contraseña de sudo:")
+			if password == "1234":
+				output = "[color=white]Limpiando archivos de caché obsoletos...\n[/color]"
+				await get_tree().create_timer(1.0).timeout
+				var count_autoclean = delete_files_in("user://ubuntu_sim/var/cache/apt/archives")
+				output += "[color=green]Archivos obsoletos eliminados: " + str(count_autoclean) + "[/color]\n"
+			else:
+				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
-			# Autoremove
-			output += "[color=white] Eliminando paquetes no necesarios...\n[/color]"
-			await get_tree().create_timer(1.0).timeout
-			var count_autoremove = delete_files_in("user://ubuntu_sim/var/lib/apt/lists")
-			output += "[color=green]Paquetes no necesarios eliminados: " + str(count_autoremove) + "[/color]"
-
-		else:
-			output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
-
+	elif command == "sudo apt-get autoremove":
+			var password = await prompt_password("Introduce la contraseña de sudo:")
+			if password == "1234":
+				output = "[color=white]Eliminando paquetes no necesarios...\n[/color]"
+				await get_tree().create_timer(1.0).timeout
+				var count_autoremove = delete_files_in("user://ubuntu_sim/var/lib/apt/lists")
+				output += "[color=green]Paquetes no necesarios eliminados: " + str(count_autoremove) + "[/color]\n"
+			else:
+				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
 	elif command == "date":
 		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
@@ -1146,42 +1198,21 @@ func process_command(command: String):
 					start_dialog(ssh_cp_dialogs3)  # "Muy bien, ahora sal del ordenador..."
 					mision_actual += 1
 				elif copia_realizada and not ls_hecho_despues_de_copia:
-					# Jugador hizo cp pero no verificó con ls → recordatorio final
+					# Jugador hizo cp pero no verificó con ls → recordatorio
 					start_dialog(ssh_cp_dialogs2)  # "Marcial, no te olvides de listar..."
+					mision_actual += 1
+					# Aunque no haya hecho ls, avanzamos igual para no quedar atascados
 				else:
-					# Jugador aún no ha hecho nada importante
+					# No ha hecho nada relevante → mensaje opcional
 					output += "\nNo se han realizado acciones relevantes en esta sesión."
 
 			# Limpiar estado SSH
 			ssh_active = false
-			ssh_host = ""
 			ssh_user = ""
+			ssh_host = ""
 			ssh_user_base_path = ""
 			current_path = "/"  # Volver al sistema local
 
-			show_prompt()
-		else:
-			output = "Not connected to an SSH session. Use this command only to disconnect remote sessions."
-		return
-
-	elif command == "exit":
-		if ssh_active:
-			output = "Connection to " + ssh_host + " closed."
-
-			# Solo avanzar si hizo cp + ls
-			if mision_actual == MISION_SSH_COPIA_PRIVADO:
-				if copia_realizada and ls_hecho_despues_de_copia:
-					mision_actual += 1  # Avanzar de misión
-					output += "\n[color=green]¡Misión completada![/color]"
-				elif copia_realizada and not ls_hecho_despues_de_copia:
-					start_dialog(ssh_cp_dialogs2)  # Recordatorio final
-
-			# Limpiar estado SSH
-			ssh_active = false
-			ssh_user = ""
-			ssh_host = ""
-			ssh_user_base_path = ""
-			current_path = "/"
 			show_prompt()
 		else:
 			output = "Not connected to an SSH session."
