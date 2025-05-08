@@ -181,10 +181,11 @@ var ssh_cp_dialogs2 = [
 ]
 #Si el jugador ha realizado el comando ls en la ruta contabilidad\Documentos y a hecho cp en el directorio carpeta:
 var ssh_cp_dialogs3 = [
-	"Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'.",
-	"Departamento de contabilidad: Hola, le hablamos desde el departamento de contabilidad. No podemos guardar nada más en el ordenador. Un saludo",
-	"Viejo: Usaremos de nuevo el servicio SSH al equipo, empieza a conectarte"
+	"Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'."
 ]
+var ssh_cp_dialogs5 = [
+	"Departamento de Contabilidad: Hola, le hablamos desde el departamento de contabilidad. No podemos guardar nada más en el ordenador. Un saludo"
+] 
 #Si el jugador  déspùes de empezar el apache_dialogs5 usa el cat en el fichero Para_Pam le salta este dialogo:
 var ssh_cp_dialogs4 =[
 	"Viejo: Pero serás cotilla!!...\n "+
