@@ -16,11 +16,25 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = 9
+var mision_actual = MISION_APACHE_3_STATUS_OK_9
 
-const MISION_APACHE_1_STATUS_FALLIDO = 7
-const MISION_APACHE_2_RESTART = 8
-const MISION_APACHE_3_STATUS_OK = 9
+const MISION_INICIAL_1_CD_1 = 1
+const MISION_INICIAL_2_LS_2 = 2
+const MISION_INICIAL_3_CAT_3 = 3
+const MISION_INICIAL_4_PING10_4 = 4
+const MISION_INICIAL_5_PING1_FAIL_5 = 5
+const MISION_INICIAL_6_PING1_OK_6 = 6
+
+const MISION_APACHE_1_STATUS_FALLIDO_7 = 7
+const MISION_APACHE_2_RESTART_8 = 8
+const MISION_APACHE_3_STATUS_OK_9 = 9
+
+const MISION_SSH_1_10 = 10
+const MISION_SSH_2_11 = 11
+const MISION_SSH_3_12 = 12
+const MISION_SSH_4_13 = 13
+const MISION_SSH_COPIA_PRIVADO = 10
+const MISION_SSH_LIMPIAR = 11
 
 # Variables principales
 var current_command = ""
@@ -53,36 +67,33 @@ var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/contabilidad/Documentos
 var comandos_introducidos: Array[String] = [
 	#"cd home/usuario1/Documentos",
 	#"ls",
-	"ping 192.168.10.10",
+	#"ping 192.168.10.1",
+	#"ping 192.168.10.10",
 	#"cat IPS_El_Bohío.txt",
-	#"sudo systemctl status apache",
+	"ssh contabilidad@192.168.10.10",
+	"sudo systemctl status apache",
 	#"sudo systemctl restart apache",
 	]
 var comando_actual = null
 
 # Variables para controlar el flujo de la misión Apache
-var apache_reiniciado = false        # Indica si el jugador ha reiniciado Apache
-var apache_mision_completada = false # Indica si la misión Apache está completada
 var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
 
 # Variables comandos chorras
 var start_time = Time.get_unix_time_from_system()  # Esto lo deberías inicializar al arranque
-var command_history = []  # Lista para almacenar el historial
+#var command_history = []  # Lista para almacenar el historial
 
 #Variables ssh
-# Variables principales
 var ssh_active = false  # Indica si el jugador está conectado por SSH
 var ssh_host = ""       # Guarda el nombre del host al que está conectado
 var ssh_user = ""       # Guarda el nombre de usuario
-var entorno_actual = "local"  # Puede ser "local" o "remoto"
+#var entorno_actual = "local"  # Puede ser "local" o "remoto"
 #variables misión ssh_copia
-const MISION_SSH_COPIA_PRIVADO = 10
 # Variables globales de estado
 var copia_realizada = false
 var ls_hecho_despues_de_copia = false
 
 # Estado de la misión "Limpiar espacio"
-const MISION_SSH_LIMPIAR = 11
 var df_ejecutado = false
 var apt_clean_ejecutado = false
 var apt_autoclean_ejecutado = false
@@ -93,6 +104,7 @@ var descargas_borradas = false
 var papelera_borrada = false
 # Estado de la nueva misión SSH + Limpiar disco
 var df_hecho = false
+
 # Datos simulados para df -h
 var disk_usage = [
 	{ "filesystem": "/dev/sda1", "size": "50G", "used": "25G", "avail": "25G", "use%": "50%", "mounted": "/mnt" },
@@ -111,129 +123,6 @@ var ssh_allowed_domains = {
 	"backup.servidor.local": "192.168.1.101"
 }
 
-# Diálogos de la misión
-var dialogos = null  # Variable para almacenar el recurso
-
-var mission2_dialogs = [
-	"Excelente, ya te encuentras en el directorio donde está el archivo.\n" +
-	"Ahora falta listarlo para asegurarnos que se encuentra ahí.\n" +
-	"Para ello usaremos el comando `ls`. Solo tienes que escribir `ls` y pulsar la tecla intro."
-]
-
-var mission2_dialogs2 = [
-	"¡Perfecto! Has encontrado el archivo `IPS_El_Bohío.txt`.\n" +
-	"Ahora falta un paso más: ver el contenido de dicho fichero.\n" +
-	"Para ello vas a usar el comando `cat` seguido del nombre del fichero,\n" +
-	"por ejemplo: `cat IPS_El_Bohío.txt`. ¡Vamos, usa a ese gatito!"
-]
-
-var mission2_dialogs3 = [
-	"Puedes ver que la IP del departamento de ventas es 192.168.10.10 y su puerta de enlace es 192.168.10.1.\n" +
-	"Su puerta de enlace es el router desde donde le llega la conexión a internet.\n" +
-	"Usa el comando `ping 192.168.10.10` del ordenador del departamento de ventas para ver si funciona.\n" +
-	"Recuerda si quieres que el comando se detenga pulsa las teclas Ctrl + C"
-]
-
-var mission2_dialogs4 = [
-	"El ping ha sido un éxito eso quiere decir que el problema no está con su equipo,\n" +
-	"prueba hacer ping a la puerta de enlace."
-]
-
-var mission2_dialogs5 = [
-	"Intentalo con el ping 192.168.10.10"
-]
-var mission2_dialogs6 = [
-	"¡Por todos los nodos! Al router le pasa algo,\n" +
-	"Ahora mismo les mando un mensaje para que utilicen la técnica ancestral de todo buen informático...\n" +
-	"Reiniciar el router"
-]
-
-var mission2_dialogs7 = [
-	"Enhorabuena por este gran éxito, ¡aquí te dejo tu pin!",
-	" Pam:\n\nSaludos soy Pam me han llegado muchos email donde dicen nuestros clientes que nuestra web no funciona.",
-	" Viejo:\n\nOMG! Repampanos y retuecanos ¡¿es que nadie hará nada?! Ah bueno nosotros.\n" +
-	"Informáticos al rescate. Nuestra Web esta desde el servicio apache el indio apache noo!\n" +
-	"Apache es el servicio web. Hoy vas a mirar el estado del servicio y si esta mal lo vas a resetear.\n" +
-	"Empecemos mirando el estado solo tienes que escribir `sudo systemctl status apache`."
-]
-# Diálogos de la misión Apache
-var apache_dialogs3 = [
-	"Vaya tenemos un error en rojo los peores de todos! Vamos a resetear el servicio Apache ahora escribe `sudo systemctl restart apache`."
-]
-var apache_dialogs4 = [
-	"Ahora puede volver a mirar el estado del servicio."
-]
-var apache_dialogs5 = [
-	"Viejo: Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache. \n",
-	" Departamento de Contabilidad: Hola soy Miguel, queria pediros si podriáis realizar una copia a la carpeta llamada\n"+
-	"Privado esta situado en Documentos, es importante para mi y no sais unos cotillas nada!",
-	"Viejo: Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de  \n"+
-	"solo tienes que ir a la terminal y escribir ssh contabilidad@<ip del equipo>. Recuerda donde están guardas las Ips."
-]
-
-#El jugador se conecta por ssh a contabilidad@192.16.10.100 salta este dialogo:
-var ssh_cp_dialogs1 =[
-		"Viejo: Muy bien ya estás dentro! busca el fichero y realiza la copia"
-]
-#El jugador tiene que usar ls si no le salta el dialogo ssh_cp_dialogs3: 
-var ssh_cp_dialogs2 = [
-	"Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia."
-]
-#Si el jugador ha realizado el comando ls en la ruta contabilidad\Documentos y a hecho cp en el directorio carpeta:
-var ssh_cp_dialogs3 = [
-	"Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'."
-]
-var ssh_cp_dialogs5 = [
-	"Departamento de Contabilidad: Hola, le hablamos desde el departamento de contabilidad. No podemos guardar nada más en el ordenador. Un saludo"
-] 
-#Si el jugador  déspùes de empezar el apache_dialogs5 usa el cat en el fichero Para_Pam le salta este dialogo:
-var ssh_cp_dialogs4 =[
-	"Viejo: Pero serás cotilla!!...\n "+
-	"Cuenta cuenta..."
-]
-#Dialogos misión ssh_limpiar
-var ssh_limpiar_dialogs = {
-	"ssh_conectado": [
-		"Viejo: Ahora ya estás dentro. Creo que debe ser un problema de almacenamiento. Para ver el uso del disco, utiliza el comando:\ndf -h /contabilidad\nEn la columna 'Use%' podrás ver el porcentaje utilizado."
-	],
-	"df_alto": [
-		"Viejo: ¡Un 98%! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... vaya, creo que ese soy yo. Je je. Pero no te preocupes, hay solución.\nEscribe: sudo apt-get clean\nContraseña: SudC0nt\nNo es una 'O', es un cero."
-	],
-	"apt_get_clean_ok": [
-		"Viejo: Buen trabajo. Ahora sigue con: sudo apt-get autoclean"
-	],
-	"apt_get_autoclean_ok": [
-		"Viejo: Bien hecho. Siguiente paso: sudo apt-get autoremove"
-	],
-	"apt_get_autoremove_ok": [
-		"Viejo: Excelente. Ahora dejamos esto limpio como recién estrenado. Ejecuta:\nrm -r /tmp/*"
-	],
-	"tmp_limpio": [
-		"Viejo: Perfecto. Ahora ejecuta:\n rm -r /var/tmp/*"
-	],
-	"var_tmp_limpio": [
-		"Viejo: ¡Muy bien! Ahora borramos las descargas del usuario con:\nrm -rf /contabilidad/Descargas/*"
-	],
-	"descargas_borradas": [
-		"Viejo: ¡Perfecto! Ahora limpiamos la papelera con estos dos comandos:\nrm -r /contabilidad/.local/share/Trash/files/*\ny\nrm -r contabilidad/.local/share/Trash/info/*"
-	],
-	"papelera_borrada": [
-		"Viejo: ¡Perfecto! Verifica el uso del disco nuevamente con:\ndf -h /contabilidad"
-	],
-	"df_bajo": [
-		"Viejo: ¡Un 70%! Eso ya es otra cosa. Ya podrán volver a descargarse películas... jeje, guiño guiño.\nAhora puedes salir del servidor con:\nexit"
-	],
-	"finalizada": [
-		"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!\nMisión terminada: Liberar espacio.\nFin del día."
-	]
-}
-
-#Fin de la misión ssh_copia
-# Variables para controlar el flujo de la misión
-var esperando_ls = false  # Esperando que el jugador use `ls`
-var archivo_listado = false  # Indica si el jugador ha listado los archivos
-var archivo_leido = false  # Indica si el jugador ha usado `cat` en el archivo
-
 # Variables para el comando ping
 var ping_timer: Timer = null
 var ping_active = false
@@ -242,11 +131,9 @@ var ping_seq = 1
 var rtt_times = []
 
 func _ready():
-	#dialogos = load("res://dialogs.gd")
 	history.bbcode_enabled = true
 	nano_panel.visible = false
 	dialog_box.visible = false  # Inicializar el diálogo oculto
-	init_structure()
 	show_prompt()
 	save_button.pressed.connect(_on_save_button_pressed)
 	
@@ -257,26 +144,12 @@ func _ready():
 		if ips_file:
 			ips_file.store_string("""# IPs asignadas al Departamento de Ventas - El Bohío
 
-192.168.10.10   pc_ventas_1
-192.168.10.11   pc_ventas_2
-192.168.10.12   impresora_oficina
-192.168.10.254  router_sede
+			192.168.10.10   pc_ventas_1
+			192.168.10.11   pc_ventas_2
+			192.168.10.12   impresora_oficina
+			192.168.10.254  router_sede
 
-# Fin del archivo""")
-		#ips_file.close()
-	#print("✅ Archivo IPS_El_Bohío.txt creado")
-		
-	# Inicializar la nueva misión Apache
-#func inicializar_mision_apache():
-	#if mision_actual == 7:  # Nueva misión Apache
-		#start_dialog(apache_dialogs1)  # Mostrar diálogo inicial de Pam
-		#mision_actual = 8
-	#
-	#if apache_estado_verificado and apache_reiniciado:
-		#apache_mision_completada = true
-		#start_dialog(apache_dialogs5)  # Mostrar mensaje final
-		#mision_actual += 1  # Avanzar a la siguiente misión
-# Actualiza el prompt para no perder la visualización
+			# Fin del archivo""")
 
 	if not cursor_timer: #Verifica si el timer está inicializado
 		cursor_timer = Timer.new() #Crea una nueva instancia de Timer
@@ -319,92 +192,6 @@ func show_prompt():
 
 	history_text += "\n" + prompt_text  # Agrega el prompt al historial de texto
 	history.text = history_text  # Actualiza el texto de la consola
-
-func init_structure():
-	var dir = DirAccess.open("user://")
-	if dir:
-		# Crear ubuntu_sim si no existe
-		if not dir.dir_exists("ubuntu_sim"):
-			dir.make_dir("ubuntu_sim")
-		dir.change_dir("ubuntu_sim")
-
-		# Crear carpetas raíz
-		var root_folders = ["home", "etc", "var", "bin", "usr", "boot", "dev", "lib", "media", "mnt", "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp"]
-		for folder in root_folders:
-			if not dir.dir_exists(folder):
-				dir.make_dir(folder)
-
-		# HOME
-		if not dir.dir_exists("home/usuario1"):
-			dir.make_dir_recursive("home/usuario1")
-		var user_subfolders = ["Documentos", "Descargas", "Escritorio", "Imágenes", "Música", "Vídeos"]
-		for subfolder in user_subfolders:
-			if not dir.dir_exists("home/usuario1/" + subfolder):
-				dir.make_dir("home/usuario1/" + subfolder)
-
-		# ETC
-		var etc_files = ["passwd", "group", "shadow", "fstab", "hostname", "bash.bashrc", "crontab"]
-		for etc_file in etc_files:
-			var path = "etc/" + etc_file
-			if not dir.file_exists(path):
-				var f = FileAccess.open("user://ubuntu_sim/" + path, FileAccess.WRITE)
-				if f: f.close()
-		var etc_dirs = ["Network", "systemd", "apt", "opt", "X11", "sgml", "xml"]
-		for etc_dir in etc_dirs:
-			if not dir.dir_exists("etc/" + etc_dir):
-				dir.make_dir_recursive("etc/" + etc_dir)
-		if not dir.dir_exists("etc/Network/interfaces"):
-			dir.make_dir_recursive("etc/Network/interfaces")
-		if not dir.dir_exists("etc/systemd/system"):
-			dir.make_dir_recursive("etc/systemd/system")
-		if not dir.file_exists("etc/apt/sources.list"):
-			var f = FileAccess.open("user://ubuntu_sim/etc/apt/sources.list", FileAccess.WRITE)
-			if f: f.close()
-
-		# USR
-		var usr_subdirs = ["bin", "sbin", "share", "lib", "local", "src", "games", "include", "libexec"]
-		for usr_sub in usr_subdirs:
-			if not dir.dir_exists("usr/" + usr_sub):
-				dir.make_dir_recursive("usr/" + usr_sub)
-		if not dir.dir_exists("usr/share/man"):
-			dir.make_dir_recursive("usr/share/man")
-		if not dir.dir_exists("usr/share/doc"):
-			dir.make_dir_recursive("usr/share/doc")
-		if not dir.dir_exists("usr/X11R6"):
-			dir.make_dir_recursive("usr/X11R6")
-
-		# VAR
-		var var_subdirs = ["log", "tmp", "lib", "spool", "cache", "mail", "run", "lock", "opt"]
-		for sub in var_subdirs:
-			if not dir.dir_exists("var/" + sub):
-				dir.make_dir_recursive("var/" + sub)
-
-		# Subdirectorios específicos para apt-get clean
-		var cache_subdirs = ["apt", "apt/archives", "apt/archives/partial"]
-		for sub in cache_subdirs:
-			var path = "var/cache/" + sub
-			if not dir.dir_exists(path):
-				dir.make_dir_recursive(path)
-
-		var lib_subdirs = ["apt", "apt/lists", "dpkg"]
-		for sub in lib_subdirs:
-			var path = "var/lib/" + sub
-			if not dir.dir_exists(path):
-				dir.make_dir_recursive(path)
-
-		if not dir.dir_exists("var/spool/mail"):
-			dir.make_dir_recursive("var/spool/mail")
-
-		# ⚠️ Crear archivos .deb simulados (útiles para que apt-get clean funcione de inicio)
-		var archive_files = ["nano_1.0.deb", "htop_1.0.deb"]
-		for filename in archive_files:
-			var file_path = "user://ubuntu_sim/var/cache/apt/archives/" + filename
-			if not FileAccess.file_exists(file_path):
-				var f = FileAccess.open(file_path, FileAccess.WRITE)
-				if f:
-					f.store_string("Contenido simulado de " + filename)
-					f.close()
-
 
 
 func _input(event):
@@ -473,7 +260,7 @@ func _input(event):
 				ping_timer.queue_free()
 				ping_timer = null
 			
-			if mision_actual == 5 and ping_host == "192.168.10.1":
+			if mision_actual == MISION_INICIAL_5_PING1_FAIL_5 and ping_host == "192.168.10.1":
 				var transmitted = ping_seq - 1
 				var received = 0  # Ningún paquete recibido
 				var lost_percent = 100
@@ -493,8 +280,8 @@ func _input(event):
 				history_text += summary
 				history.text = history_text
 				show_prompt()
-				mision_actual = 6
-				start_dialog(mission2_dialogs6)
+				mision_actual = MISION_INICIAL_6_PING1_OK_6
+				start_dialog(Dialogos.mision_inicial_dialogs6)
 			else:
 				var summary = "^C\n---" + ping_host + " ping statistics---\n"
 				summary += str(ping_seq - 1) + " packets transmitted, " + str(ping_seq - 1) + " received, 0% packet loss\n"
@@ -509,15 +296,15 @@ func _input(event):
 				history.text = history_text
 				show_prompt()
 				
-				if mision_actual == 4:
+				if mision_actual == MISION_INICIAL_4_PING10_4:
 					if ping_host == "192.168.10.10":
-						mision_actual = 5
-						start_dialog(mission2_dialogs4)
+						mision_actual = MISION_INICIAL_5_PING1_FAIL_5
+						start_dialog(Dialogos.mision_inicial_dialogs4)
 					else:
-						start_dialog(mission2_dialogs5)
-				elif mision_actual == 6 and ping_host == "192.168.10.1":
-					mision_actual = MISION_APACHE_1_STATUS_FALLIDO
-					start_dialog(mission2_dialogs7)
+						start_dialog(Dialogos.mision_inicial_dialogs5)
+				elif mision_actual == MISION_INICIAL_6_PING1_OK_6 and ping_host == "192.168.10.1":
+					mision_actual = MISION_APACHE_1_STATUS_FALLIDO_7
+					start_dialog(Dialogos.mision_inicial_dialogs7)
 			return
 
 		# Procesar comandos normales
@@ -551,40 +338,6 @@ func _input(event):
 		if event.keycode == KEY_TAB:
 			autocomplete_command()
 			return
-			
-#función apt-get clean
-func delete_files_in(path: String) -> int:
-	var dir = DirAccess.open(path)
-	var count = 0
-	if dir:
-		dir.list_dir_begin()
-		var file = dir.get_next()
-		while file != "":
-			if not dir.current_is_dir():
-				var full_file_path = path + "/" + file
-				DirAccess.remove_absolute(full_file_path)
-				count += 1
-			file = dir.get_next()
-		dir.list_dir_end()
-	return count
-#Contraseña para sudo apt-get clean
-func prompt_password(prompt_text: String) -> String:
-	var dialog = AcceptDialog.new()
-	dialog.dialog_text = prompt_text
-
-	var password_input = LineEdit.new()
-	password_input.secret = true
-	password_input.secret_character = "*"  # Puedes cambiar el carácter si lo deseas
-	dialog.add_child(password_input)
-
-	add_child(dialog)
-	dialog.popup_centered()
-
-	await dialog.confirmed
-
-	var password = password_input.text
-	dialog.queue_free()
-	return password
 
 
 func get_full_path() -> String:
@@ -608,12 +361,6 @@ func get_full_path() -> String:
 	else:
 		return BASE_PATH + normalized  # Ruta para el sistema local
 
-func normalize_path(path: String) -> String:
-	var parts = []
-	for p in path.split("/"):
-		if p != "":
-			parts.append(p)
-	return "/" + "/".join(parts)
 
 func process_command(command: String):
 	var output := ""
@@ -648,28 +395,25 @@ func process_command(command: String):
 		# 🔁 Usamos la base correcta según el modo (SSH o local)
 		var base_path_actual = ssh_user_base_path if ssh_active else BASE_PATH
 
-		var full_path = base_path_actual + normalize_path(new_path)
+		var full_path = base_path_actual + Funciones.normalize_path(new_path)
 
 		print("Ruta completa normalizada: " + full_path)
 
 		if DirAccess.dir_exists_absolute(full_path):
 			print("El directorio existe.")
-			current_path = normalize_path(new_path)
+			current_path = Funciones.normalize_path(new_path)
 			print("Ruta actualizada a: " + current_path)
 
 			# Misión 2 (opcional, solo si ya usabas esta lógica)
-			if current_path == "/home/usuario1/Documentos" and not archivo_listado:
-				print("Entrando en la misión 2.")
-				esperando_ls = true
-				if mision_actual == 1:
-					mision_actual = 2
-					start_dialog(mission2_dialogs)
+			if current_path == "/home/usuario1/Documentos" and mision_actual == MISION_INICIAL_1_CD_1:
+				mision_actual = MISION_INICIAL_2_LS_2
+				start_dialog(Dialogos.mision_inicial_dialogs1)
 		else:
 			print("DEBUG: No existe el directorio: ", full_path)
 			output = "No existe el directorio: " + target
 
 	elif command == "sudo apt-get clean":
-			var password = await prompt_password("Introduce la contraseña de sudo:")
+			var password = await Funciones.prompt_password("Introduce la contraseña de sudo:")
 			if password == "1234":
 				output = "[color=white]Leyendo lista de paquetes...\n[/color]"
 				await get_tree().create_timer(0.8).timeout
@@ -679,8 +423,8 @@ func process_command(command: String):
 				var archives_path = "user://ubuntu_sim/var/cache/apt/archives"
 				var partial_path = "user://ubuntu_sim/var/cache/apt/archives/partial"
 
-				var count = delete_files_in(archives_path)
-				count += delete_files_in(partial_path)
+				var count = Funciones.delete_files_in(archives_path)
+				count += Funciones.delete_files_in(partial_path)
 
 				if count == 0:
 					output += "[color=yellow]No hay archivos en caché que limpiar.[/color]\n"
@@ -690,21 +434,21 @@ func process_command(command: String):
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
 	elif command == "sudo apt-get autoclean":
-			var password = await prompt_password("Introduce la contraseña de sudo:")
+			var password = await Funciones.prompt_password("Introduce la contraseña de sudo:")
 			if password == "1234":
 				output = "[color=white]Limpiando archivos de caché obsoletos...\n[/color]"
 				await get_tree().create_timer(1.0).timeout
-				var count_autoclean = delete_files_in("user://ubuntu_sim/var/cache/apt/archives")
+				var count_autoclean = Funciones.delete_files_in("user://ubuntu_sim/var/cache/apt/archives")
 				output += "[color=green]Archivos obsoletos eliminados: " + str(count_autoclean) + "[/color]\n"
 			else:
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
 	elif command == "sudo apt-get autoremove":
-			var password = await prompt_password("Introduce la contraseña de sudo:")
+			var password = await Funciones.prompt_password("Introduce la contraseña de sudo:")
 			if password == "1234":
 				output = "[color=white]Eliminando paquetes no necesarios...\n[/color]"
 				await get_tree().create_timer(1.0).timeout
-				var count_autoremove = delete_files_in("user://ubuntu_sim/var/lib/apt/lists")
+				var count_autoremove = Funciones.delete_files_in("user://ubuntu_sim/var/lib/apt/lists")
 				output += "[color=green]Paquetes no necesarios eliminados: " + str(count_autoremove) + "[/color]\n"
 			else:
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
@@ -863,10 +607,10 @@ func process_command(command: String):
 				output += "[color=#ff4d4d]/dev/sda1       100G   98G  2.0G  98% /contabilidad[/color]"
 				if not df_hecho:
 					df_hecho = true
-					start_dialog(ssh_limpiar_dialogs["df_alto"])
+					start_dialog(Dialogos.ssh_limpiar_dialogs2)
 			else:
 				output += "[color=#33cc33]/dev/sda1       100G   70G  30G  70% /home/contabilidad[/color]"
-				start_dialog(ssh_limpiar_dialogs["df_bajo"])
+				start_dialog(Dialogos.ssh_limpiar_dialogs10)
 		else:
 			# Salida normal para otras rutas o cuando no es la misión
 			for disk in disk_usage:
@@ -927,22 +671,18 @@ func process_command(command: String):
 					if copia_realizada and not ls_hecho_despues_de_copia:
 						ls_hecho_despues_de_copia = true
 						output += "\n[color=green]Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'.[/color]"
-						start_dialog(ssh_cp_dialogs2)
+						start_dialog(Dialogos.ssh_cp_dialogs2)
 					elif not copia_realizada:
 						output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
-						start_dialog(ssh_cp_dialogs1)
+						start_dialog(Dialogos.ssh_cp_dialogs1)
 				elif not copia_realizada:
 					output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
-					start_dialog(ssh_cp_dialogs1)
+					start_dialog(Dialogos.ssh_cp_dialogs1)
 
 			# Misión anterior: Apache → IPS_El_Bohío.txt
-			if current_path == "/home/usuario1/Documentos" and esperando_ls and not archivo_listado:
-				if "IPS_El_Bohío.txt" in files:
-					archivo_listado = true
-					esperando_ls = false
-					if mision_actual == 2:
-						mision_actual = 3
-						start_dialog(mission2_dialogs2)
+			if current_path == "/home/usuario1/Documentos" and "IPS_El_Bohío.txt" in files and mision_actual == MISION_INICIAL_2_LS_2:
+				mision_actual = MISION_INICIAL_3_CAT_3
+				start_dialog(Dialogos.mision_inicial_dialogs2)
 		else:
 			output = "No se pudo abrir el directorio."
 
@@ -992,7 +732,7 @@ func process_command(command: String):
 			if DirAccess.dir_exists_absolute(full_path):
 				if recursive:
 					if DirAccess.dir_exists_absolute(full_path):
-						remove_directory_recursive(full_path)
+						Funciones.remove_directory_recursive(full_path)
 						output = "Directorio eliminado: " + target
 				else:
 					output = "No se pudo eliminar el directorio (no existe): " + target
@@ -1024,9 +764,13 @@ func process_command(command: String):
 				output = file.get_as_text()
 				file.close()
 
+				if mision_actual == MISION_INICIAL_3_CAT_3 and filename == "IPS_El_Bohío.txt":
+					mision_actual = MISION_INICIAL_4_PING10_4
+					start_dialog(Dialogos.mision_inicial_dialogs3)
+
 				# Detectar lectura del archivo Para_Pam.txt durante la misión SSH
-				if mision_actual == MISION_SSH_COPIA_PRIVADO and filename == "Para_Pam.txt":
-					start_dialog(ssh_cp_dialogs4)
+				elif mision_actual == MISION_SSH_COPIA_PRIVADO and filename == "Para_Pam.txt":
+					start_dialog(Dialogos.ssh_cp_dialogs4)
 					print("DEBUG: Archivo 'Para_Pam.txt' leído. Saltando diálogo de cotilla.")
 			else:
 				output = "Error: No se pudo abrir el archivo."
@@ -1047,7 +791,7 @@ func process_command(command: String):
 				output = "ping: " + ping_host + ": Temporary failure in name resolution"
 		return
 
-	elif command.begins_with("sudo systemctl"):
+	elif command.begins_with("sudo systemctl "):
 		var parts = command.split(" ")
 		if parts.size() < 3:
 			output = "Comando incompleto. Usa sudo systemctl status apache o sudo systemctl restart apache."
@@ -1056,22 +800,22 @@ func process_command(command: String):
 			var comando = parts[3].strip_edges()
 			if action == "status":
 				if comando == "apache":
-					if mision_actual <= MISION_APACHE_2_RESTART:
+					if mision_actual <= MISION_APACHE_2_RESTART_8:
 						output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/usr/lib/systemd/system/apache2.service; enabled; preset: enabled)\n Active: [color=red]failed[/color] (Result: exit-code) since " + fecha_actual + " CEST; 8s ago\n Duration: 47min 35.229s\n Process: 786f618a04744458eb65217e5851d59fe ExecStart=/usr/sbin/apachectl start (code=[color=red]exited[/color], status=[color=red]1/FAILURE[/color])\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 5825 (apache2)\n Status: \"\" active (running) since " + fecha_actual + " CEST; 8s ago\n Docs: man:apache2(8)\n Tasks: 1 (limit: 4915)\n Memory: 1.6M\n CPU: 13ms[/color]"
-						if mision_actual == MISION_APACHE_1_STATUS_FALLIDO:
-							mision_actual = MISION_APACHE_2_RESTART
-							start_dialog(apache_dialogs3)
+						if mision_actual == MISION_APACHE_1_STATUS_FALLIDO_7:
+							mision_actual = MISION_APACHE_2_RESTART_8
+							start_dialog(Dialogos.apache_dialogs1)
 					else:
 						output = "[color=white]● apache2.service - The Apache HTTP Server\n Loaded: loaded (/lib/systemd/system/apache2.service; [color=green]enabled[/color]; vendor preset: [color=green]enabled[/color])\n Active: [color=green]active (running)[/color] since " + fecha_actual + " CEST; 23s ago\n Docs: https://httpd.apache.org/docs/2.4/\n Main PID: 1234 (apache2)\n Tasks: 8 (limit: 4915)\n Memory: 10.5M\n CGroup: /system.slice/apache2.service\n ├─1234 /usr/sbin/apache2 -k start\n ├─1235 /usr/sbin/apache2 -k start\n └─1236 /usr/sbin/apache2 -k start[/color]"
-						if mision_actual == MISION_APACHE_3_STATUS_OK:
-							#TODO mision_actual = siguiente mision
-							start_dialog(apache_dialogs5)
+						if mision_actual == MISION_APACHE_3_STATUS_OK_9:
+							mision_actual = MISION_SSH_1_10
+							start_dialog(Dialogos.apache_dialogs3)
 			elif action == "restart":
 				if comando == "apache":
 					output = "Restarting Apache service..."
-					if mision_actual == MISION_APACHE_2_RESTART:
-						mision_actual = MISION_APACHE_3_STATUS_OK
-						start_dialog(apache_dialogs4)
+					if mision_actual == MISION_APACHE_2_RESTART_8:
+						mision_actual = MISION_APACHE_3_STATUS_OK_9
+						start_dialog(Dialogos.apache_dialogs2)
 					#else:
 						#output = "No se puede reiniciar Apache sin verificar su estado primero."
 				else:
@@ -1202,9 +946,9 @@ func process_command(command: String):
 				current_path = "/"  # Empezamos desde raíz del sistema remoto
 
 				# Si venimos de Apache, iniciamos esta nueva misión
-				if mision_actual == MISION_APACHE_3_STATUS_OK:
-					mision_actual = MISION_SSH_COPIA_PRIVADO
-					start_dialog(ssh_cp_dialogs1)
+				if mision_actual == MISION_SSH_1_10:
+					mision_actual = MISION_SSH_2_11
+					start_dialog(Dialogos.ssh_cp_dialogs1)
 
 			else:
 				output = "Error accediendo al sistema de archivos."
@@ -1219,11 +963,11 @@ func process_command(command: String):
 			if mision_actual == MISION_SSH_COPIA_PRIVADO:
 				if copia_realizada and ls_hecho_despues_de_copia:
 					# Misión completada: jugador hizo cp y verificó con ls
-					start_dialog(ssh_cp_dialogs3)  # "Muy bien, ahora sal del ordenador..."
+					start_dialog(Dialogos.ssh_cp_dialogs3)  # "Muy bien, ahora sal del ordenador..."
 					mision_actual += 1
 				elif copia_realizada and not ls_hecho_despues_de_copia:
 					# Jugador hizo cp pero no verificó con ls → recordatorio
-					start_dialog(ssh_cp_dialogs2)  # "Marcial, no te olvides de listar..."
+					start_dialog(Dialogos.ssh_cp_dialogs2)  # "Marcial, no te olvides de listar..."
 					mision_actual += 1
 					# Aunque no haya hecho ls, avanzamos igual para no quedar atascados
 				else:
@@ -1269,7 +1013,7 @@ func process_command(command: String):
 			if not recursive:
 				output = "cp: omitiendo directorio '" + source + "'. Usa -r para copiar recursivamente."
 			else:
-				copy_directory(source_path, dest_path)
+				Funciones.copy_directory(source_path, dest_path, get_full_path())
 				output = "Directorio copiado de " + source + " a " + destination
 
 				# Misión SSH: Detectar si es la carpeta Privado
@@ -1305,7 +1049,7 @@ func process_command(command: String):
 		pass
 
 	else:
-		if esperando_ls:
+		if mision_actual == MISION_INICIAL_2_LS_2:
 			output = "Ese comando no es correcto. Prueba con ls."
 		else:
 			output = "{command}: Comando no encontrado.".format({"command": command.split(" ")[0]})
@@ -1315,102 +1059,6 @@ func process_command(command: String):
 		history.text = history_text
 	show_prompt()
 
-#Función que borre de forma recursiva los directorios
-func remove_directory_recursive(path):
-	var dir = DirAccess.open(path)
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if file_name != "." and file_name != "..":
-				var full_path = path + "/" + file_name
-				if dir.current_is_dir():
-					# Si es un subdirectorio, llamar recursivamente
-					remove_directory_recursive(full_path)
-				else:
-					# Si es un archivo, eliminarlo
-					DirAccess.remove_absolute(full_path)
-			file_name = dir.get_next()
-		dir.list_dir_end()
-		# Cuando esté vacío, eliminar el directorio principal
-		DirAccess.remove_absolute(path)
-
-# Función para copiar directorios recursivamente
-func copy_directory(src: String, dst: String):
-	# Crear una instancia de DirAccess
-	var dir_access = DirAccess.open(get_full_path())
-	
-	# Verificar si el directorio destino existe, y si no, crearlo
-	if not dir_access.dir_exists(dst):
-		print("Creando directorio destino:", dst)  # Agregar un print para verificar la creación
-		if not dir_access.make_dir_recursive(dst):
-			print("Error: No se pudo crear el directorio destino:", dst)
-			return
-
-	# Abrir el directorio origen
-	var src_dir = DirAccess.open(src)
-	if not src_dir:
-		print("Error: No se pudo acceder al directorio origen:", src)
-		return
-
-	# Comenzar a recorrer el directorio origen
-	src_dir.list_dir_begin()
-	var file_name = src_dir.get_next()
-
-	# Iterar sobre todos los archivos y subdirectorios
-	while file_name != "":
-		if file_name != "." and file_name != "..":
-			var src_item = src + "/" + file_name
-			var dst_item = dst + "/" + file_name
-
-			# Si es un directorio, llamar recursivamente
-			if src_dir.dir_exists(src_item):
-				copy_directory(src_item, dst_item)
-			# Si es un archivo, copiarlo
-			elif src_dir.file_exists(src_item):
-				copy_file(src_item, dst_item)
-
-		# Obtener el siguiente archivo o subdirectorio
-		file_name = src_dir.get_next()
-
-	# Terminar la lectura del directorio
-	src_dir.list_dir_end()
-
-# Función para copiar archivos
-
-func copy_file(src_path: String, dst_path: String):
-	var file_name = src_path.get_file()
-	
-	# Verifica si el archivo de origen existe
-	if not FileAccess.file_exists(src_path):
-		print("Error: El archivo de origen no existe: ", src_path)
-		return false
-
-	# Si el destino es un directorio existente, añade el nombre del archivo al final
-	var dir_access = DirAccess.open(get_full_path())
-	if dir_access and dir_access.dir_exists(dst_path):
-		dst_path = dst_path.rstrip("/") + "/" + file_name
-
-	# Intenta abrir el archivo de origen
-	var source_file = FileAccess.open(src_path, FileAccess.READ)
-	if not source_file:
-		print("Error: No se pudo leer el archivo de origen: ", src_path)
-		return false
-
-	var content = source_file.get_as_text()
-	source_file.close()
-
-	# Intenta crear y escribir en el archivo de destino
-	var dest_file = FileAccess.open(dst_path, FileAccess.WRITE)
-	if not dest_file:
-		print("Error: No se pudo escribir en el archivo de destino: ", dst_path)
-		return false
-
-	dest_file.store_string(content)
-	dest_file.close()
-
-	print("Archivo copiado de %s a %s" % [src_path, dst_path])
-	return true
 
 func _ping_satisfactorio():
 	ping_active = true
@@ -1512,7 +1160,7 @@ func autocomplete_command():
 	# Construir la ruta absoluta desde current_path
 	var full_path = ""
 	if base_path.begins_with("/"):
-		full_path = BASE_PATH + normalize_path(base_path)  # ruta absoluta interna del juego
+		full_path = BASE_PATH + Funciones.normalize_path(base_path)  # ruta absoluta interna del juego
 	else:
 		full_path = get_full_path() + "/" + base_path  # relativa al directorio actual
 

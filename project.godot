@@ -15,6 +15,12 @@ run/main_scene="uid://bnyfgnkbfuxen"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+ConfiguracionInicial="*res://configuracion_inicial.gd"
+Funciones="*res://funciones.gd"
+Dialogos="*res://dialogos.gd"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
