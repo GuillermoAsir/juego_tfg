@@ -76,10 +76,11 @@ var ssh_host = ""       # Guarda el nombre del host al que está conectado
 var ssh_user = ""       # Guarda el nombre de usuario
 var entorno_actual = "local"  # Puede ser "local" o "remoto"
 #variables misión ssh_copia
-var esperando_copia_privado = false  # Esperando que haga `cp`
-var copia_realizada = false         # Se ha hecho la copia
-var ls_hecho_despues_de_copia = false
 const MISION_SSH_COPIA_PRIVADO = 10
+# Variables globales de estado
+var copia_realizada = false
+var ls_hecho_despues_de_copia = false
+
 #Lista de IPs permitidas
 var ssh_allowed_ips = ["192.168.10.100", "192.168.10.101", "192.168.10.102"]
 
@@ -270,43 +271,82 @@ func init_structure():
 		dir.change_dir("ubuntu_sim")
 
 		# Crear carpetas raíz
-		for folder in ["home", "etc", "var", "bin", "usr"]:
+		var root_folders = ["home", "etc", "var", "bin", "usr", "boot", "dev", "lib", "media", "mnt", "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp"]
+		for folder in root_folders:
 			if not dir.dir_exists(folder):
 				dir.make_dir(folder)
 
 		# HOME
 		if not dir.dir_exists("home/usuario1"):
-			dir.make_dir("home/usuario1")
-		for subfolder in ["Documentos", "Descargas", "Escritorio", "Imágenes", "Música", "Vídeos"]:
+			dir.make_dir_recursive("home/usuario1")
+		var user_subfolders = ["Documentos", "Descargas", "Escritorio", "Imágenes", "Música", "Vídeos"]
+		for subfolder in user_subfolders:
 			if not dir.dir_exists("home/usuario1/" + subfolder):
 				dir.make_dir("home/usuario1/" + subfolder)
 
 		# ETC
-		for etc_dir in ["passwd", "group", "shadow", "fstab", "hostname", "bash.bashrc", "crontab"]:
+		var etc_files = ["passwd", "group", "shadow", "fstab", "hostname", "bash.bashrc", "crontab"]
+		for etc_file in etc_files:
+			var path = "etc/" + etc_file
+			if not dir.file_exists(path):
+				var f = FileAccess.open("user://ubuntu_sim/" + path, FileAccess.WRITE)
+				if f: f.close()
+		var etc_dirs = ["Network", "systemd", "apt", "opt", "X11", "sgml", "xml"]
+		for etc_dir in etc_dirs:
 			if not dir.dir_exists("etc/" + etc_dir):
-				dir.make_dir("etc/" + etc_dir)
-		if not dir.dir_exists("etc/Network"):
-			dir.make_dir("etc/Network")
+				dir.make_dir_recursive("etc/" + etc_dir)
 		if not dir.dir_exists("etc/Network/interfaces"):
-			dir.make_dir("etc/Network/interfaces")
-		if not dir.dir_exists("etc/systemd"):
-			dir.make_dir("etc/systemd")
+			dir.make_dir_recursive("etc/Network/interfaces")
 		if not dir.dir_exists("etc/systemd/system"):
-			dir.make_dir("etc/systemd/system")
-		if not dir.dir_exists("etc/apt"):
-			dir.make_dir("etc/apt")
-		if not dir.dir_exists("etc/apt/sources.list"):
-			dir.make_dir("etc/apt/sources.list")
+			dir.make_dir_recursive("etc/systemd/system")
+		if not dir.file_exists("etc/apt/sources.list"):
+			var f = FileAccess.open("user://ubuntu_sim/etc/apt/sources.list", FileAccess.WRITE)
+			if f: f.close()
 
 		# USR
-		for usr_sub in ["bin", "sbin", "share", "lib", "local", "src", "games"]:
+		var usr_subdirs = ["bin", "sbin", "share", "lib", "local", "src", "games", "include", "libexec"]
+		for usr_sub in usr_subdirs:
 			if not dir.dir_exists("usr/" + usr_sub):
-				dir.make_dir("usr/" + usr_sub)
+				dir.make_dir_recursive("usr/" + usr_sub)
+		if not dir.dir_exists("usr/share/man"):
+			dir.make_dir_recursive("usr/share/man")
+		if not dir.dir_exists("usr/share/doc"):
+			dir.make_dir_recursive("usr/share/doc")
+		if not dir.dir_exists("usr/X11R6"):
+			dir.make_dir_recursive("usr/X11R6")
 
 		# VAR
-		for var_sub in ["log", "tmp", "lib", "spool", "cache", "mail", "run"]:
-			if not dir.dir_exists("var/" + var_sub):
-				dir.make_dir("var/" + var_sub)
+		var var_subdirs = ["log", "tmp", "lib", "spool", "cache", "mail", "run", "lock", "opt"]
+		for sub in var_subdirs:
+			if not dir.dir_exists("var/" + sub):
+				dir.make_dir_recursive("var/" + sub)
+
+		# Subdirectorios específicos para apt-get clean
+		var cache_subdirs = ["apt", "apt/archives", "apt/archives/partial"]
+		for sub in cache_subdirs:
+			var path = "var/cache/" + sub
+			if not dir.dir_exists(path):
+				dir.make_dir_recursive(path)
+
+		var lib_subdirs = ["apt", "apt/lists", "dpkg"]
+		for sub in lib_subdirs:
+			var path = "var/lib/" + sub
+			if not dir.dir_exists(path):
+				dir.make_dir_recursive(path)
+
+		if not dir.dir_exists("var/spool/mail"):
+			dir.make_dir_recursive("var/spool/mail")
+
+		# ⚠️ Crear archivos .deb simulados (útiles para que apt-get clean funcione de inicio)
+		var archive_files = ["nano_1.0.deb", "htop_1.0.deb"]
+		for filename in archive_files:
+			var file_path = "user://ubuntu_sim/var/cache/apt/archives/" + filename
+			if not FileAccess.file_exists(file_path):
+				var f = FileAccess.open(file_path, FileAccess.WRITE)
+				if f:
+					f.store_string("Contenido simulado de " + filename)
+					f.close()
+
 
 
 func _input(event):
@@ -454,6 +494,41 @@ func _input(event):
 			autocomplete_command()
 			return
 			
+#función apt-get clean
+func delete_files_in(path: String) -> int:
+	var dir = DirAccess.open(path)
+	var count = 0
+	if dir:
+		dir.list_dir_begin()
+		var file = dir.get_next()
+		while file != "":
+			if not dir.current_is_dir():
+				var full_file_path = path + "/" + file
+				DirAccess.remove_absolute(full_file_path)
+				count += 1
+			file = dir.get_next()
+		dir.list_dir_end()
+	return count
+#Contraseña para sudo apt-get clean
+func prompt_password(prompt_text: String) -> String:
+	var dialog = AcceptDialog.new()
+	dialog.dialog_text = prompt_text
+
+	var password_input = LineEdit.new()
+	password_input.secret = true
+	password_input.secret_character = "*"  # Puedes cambiar el carácter si lo deseas
+	dialog.add_child(password_input)
+
+	add_child(dialog)
+	dialog.popup_centered()
+
+	await dialog.confirmed
+
+	var password = password_input.text
+	dialog.queue_free()
+	return password
+
+
 
 
 func get_full_path() -> String:
@@ -537,6 +612,39 @@ func process_command(command: String):
 			print("DEBUG: No existe el directorio: ", full_path)
 			output = "No existe el directorio: " + target
 
+	elif command == "sudo apt-get clean":
+		var password = await prompt_password("Introduce la contraseña de sudo:")
+		if password == "1234":
+			output = "[color=white]Leyendo lista de paquetes...\n[/color]"
+			await get_tree().create_timer(0.8).timeout
+			output += "[color=white]Limpiando caché de paquetes descargados...\n[/color]"
+			await get_tree().create_timer(1.2).timeout
+
+			var archives_path = "user://ubuntu_sim/var/cache/apt/archives"
+			var partial_path = "user://ubuntu_sim/var/cache/apt/archives/partial"
+
+			var count = delete_files_in(archives_path)
+			count += delete_files_in(partial_path)
+
+			if count == 0:
+				output += "[color=yellow]No hay archivos en caché que limpiar.[/color]\n"
+			else:
+				output += "[color=green]Caché limpiada correctamente. Archivos eliminados: " + str(count) + "[/color]"
+
+			# Autoclean
+			output += "[color=white] Limpiando archivos de caché obsoletos...\n[/color]"
+			await get_tree().create_timer(1.0).timeout
+			var count_autoclean = delete_files_in("user://ubuntu_sim/var/cache/apt/archives")
+			output += "[color=green]Archivos obsoletos eliminados: " + str(count_autoclean) + "[/color]"
+
+			# Autoremove
+			output += "[color=white] Eliminando paquetes no necesarios...\n[/color]"
+			await get_tree().create_timer(1.0).timeout
+			var count_autoremove = delete_files_in("user://ubuntu_sim/var/lib/apt/lists")
+			output += "[color=green]Paquetes no necesarios eliminados: " + str(count_autoremove) + "[/color]"
+
+		else:
+			output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
 
 	elif command == "date":
@@ -727,26 +835,31 @@ func process_command(command: String):
 	elif command == "ls":
 		var full_path = get_full_path()
 		var dir = DirAccess.open(full_path)
+
 		if dir:
 			var dirs = dir.get_directories()
 			var files = dir.get_files()
+
 			for dir_name in dirs:
 				output += "[color=#8dc9e8]" + dir_name + "[/color] "
 			for file_name in files:
 				output += "[color=white]" + file_name + "[/color] "
 
-			# Misión SSH + cp
-			if mision_actual == MISION_SSH_COPIA_PRIVADO and current_path == "/contabilidad/Documentos":
+			# Misión SSH + Copia
+			if mision_actual == MISION_SSH_COPIA_PRIVADO and current_path == "/contabilidad/Documentos" and ssh_active:
 				if "Privado.old" in dirs:
-					copia_realizada = true
-					ls_hecho_despues_de_copia = true
-					output += "\nViejo: Muy bien, ahora sal del ordenador del empleado con 'exit'."
-					start_dialog(ssh_cp_dialogs3)
+					if copia_realizada and not ls_hecho_despues_de_copia:
+						ls_hecho_despues_de_copia = true
+						output += "\n[color=green]Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'.[/color]"
+						start_dialog(ssh_cp_dialogs2)
+					elif not copia_realizada:
+						output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
+						start_dialog(ssh_cp_dialogs1)
 				elif not copia_realizada:
-					output += "\nViejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia."
-					start_dialog(ssh_cp_dialogs2)
+					output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
+					start_dialog(ssh_cp_dialogs1)
 
-			# Misión anterior
+			# Misión anterior: Apache → IPS_El_Bohío.txt
 			if current_path == "/home/usuario1/Documentos" and esperando_ls and not archivo_listado:
 				if "IPS_El_Bohío.txt" in files:
 					archivo_listado = true
@@ -825,42 +938,24 @@ func process_command(command: String):
 
 	elif command.begins_with("cat "):
 		var filename = command.substr(4).strip_edges()
-		print("Comando recibido: cat " + filename)
+		var file_path = get_full_path() + "/" + filename
 
 		if filename == "":
 			output = "Error: Debes proporcionar el nombre de un archivo."
-		else:
-			# 🔧 Usamos get_full_path() para obtener la ruta correcta (local o remota)
-			var file_path = get_full_path() + "/" + filename
-			print("DEBUG: Ruta completa del archivo a leer: " + file_path)
+		elif FileAccess.file_exists(file_path):
+			var file = FileAccess.open(file_path, FileAccess.READ)
+			if file:
+				output = file.get_as_text()
+				file.close()
 
-			if FileAccess.file_exists(file_path):
-				print("El archivo existe. Intentando abrirlo...")
-				var file = FileAccess.open(file_path, FileAccess.READ)
-				if file:
-					output = file.get_as_text()
-					file.close()
-					print("Contenido del archivo leído con éxito.")
-
-					# Lógica específica de misiones
-
-					# Misión Apache - Archivo IPS_El_Bohío.txt
-					if archivo_listado and filename == "IPS_El_Bohío.txt" and not archivo_leido:
-						archivo_leido = true
-						if mision_actual == 3:
-							mision_actual = 4
-							start_dialog(mission2_dialogs3)
-
-					# Misión SSH - Archivo Para_Pam.txt
-					if filename == "Para_Pam.txt":
-						if mision_actual == MISION_SSH_COPIA_PRIVADO:
-							start_dialog(ssh_cp_dialogs4)  # Diálogo de cotilla
-				else:
-					print("Error al abrir el archivo.")
-					output = "Error: No se pudo abrir el archivo."
+				# Detectar lectura del archivo Para_Pam.txt durante la misión SSH
+				if mision_actual == MISION_SSH_COPIA_PRIVADO and filename == "Para_Pam.txt":
+					start_dialog(ssh_cp_dialogs4)
+					print("DEBUG: Archivo 'Para_Pam.txt' leído. Saltando diálogo de cotilla.")
 			else:
-				print("Archivo no encontrado: " + file_path)
-				output = "Error: El archivo '" + filename + "' no existe."
+				output = "Error: No se pudo abrir el archivo."
+		else:
+			output = "Error: El archivo '" + filename + "' no existe."
 
 	elif command.begins_with("ping "):
 		ping_host = command.substr(5).strip_edges()
@@ -952,7 +1047,7 @@ func process_command(command: String):
 					output = "Acceso denegado. Usuario no válido."
 					return
 
-			# Crear estructura si no existe
+			# Crear la carpeta del usuario remoto si no existe
 			var user_sim_path = user + "_sim"
 			var dir = DirAccess.open("user://")
 			if dir:
@@ -960,15 +1055,38 @@ func process_command(command: String):
 					dir.make_dir(user_sim_path)
 					dir.change_dir(user_sim_path)
 
-					for folder in ["etc", "var", "bin"]:
+					# Crear carpetas base
+					for folder in ["boot", "dev", "lib", "lib32", "lib64", "media", "mnt", "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp", "usr"]:
 						dir.make_dir(folder)
 
+					# Estructura del usuario
 					dir.make_dir(user)
 					dir.make_dir(user + "/Documentos")
 					dir.make_dir(user + "/Descargas")
 					dir.make_dir(user + "/Escritorio")
 					dir.make_dir(user + "/Documentos/Privado")
 					dir.make_dir(user + "/Documentos/Privado/caca")
+					# Directorios adicionales según el estándar FHS
+					dir.make_dir(user + "/.local")
+					dir.make_dir(user + "/.local/share")
+					dir.make_dir(user + "/.local/share/Trash")
+					dir.make_dir(user + "/.local/share/Trash/files")
+					dir.make_dir(user + "/.local/share/Trash/info")
+
+					dir.make_dir("etc/apt")
+					dir.make_dir("etc/apt/sources.list.d")
+					dir.make_dir("etc/systemd")
+					dir.make_dir("etc/systemd/system")
+					dir.make_dir("etc/NetworkManager")
+					dir.make_dir("etc/NetworkManager/system-connections")
+
+					dir.make_dir("var/log")
+					dir.make_dir("var/tmp")
+					dir.make_dir("var/cache/apt/archives")
+					dir.make_dir("var/lib/apt/lists")
+					dir.make_dir("var/spool")
+					dir.make_dir("var/spool/mail")
+					dir.make_dir("var/run")
 
 					dir.change_dir("..")  # Volver a user://
 					print("✅ Estructura de carpetas creada para:", user_sim_path)
@@ -1007,7 +1125,7 @@ func process_command(command: String):
 				ssh_host = host
 				current_path = "/"  # Empezamos desde raíz del sistema remoto
 
-				# Si estábamos en la misión Apache, iniciamos esta nueva misión
+				# Si venimos de Apache, iniciamos esta nueva misión
 				if mision_actual == MISION_APACHE_3_STATUS_OK:
 					mision_actual = MISION_SSH_COPIA_PRIVADO
 					start_dialog(ssh_cp_dialogs1)
@@ -1017,32 +1135,56 @@ func process_command(command: String):
 		else:
 			output = "Acceso denegado. IP o dominio no permitido."
 
-#Para salir del SSH
 	elif command == "exit":
 		if ssh_active:
-			# Solo avanzar si hizo la copia y verificó con ls
+			output = "Connection to " + ssh_host + " closed."
+
+			# Si estamos en la misión SSH_COPIA_PRIVADO
 			if mision_actual == MISION_SSH_COPIA_PRIVADO:
 				if copia_realizada and ls_hecho_despues_de_copia:
-					output = "Connection to " + ssh_host + " closed."
-					mision_actual += 1  # Pasar a la siguiente misión
-					start_dialog(ssh_cp_dialogs3)
+					# Misión completada: jugador hizo cp y verificó con ls
+					start_dialog(ssh_cp_dialogs3)  # "Muy bien, ahora sal del ordenador..."
+					mision_actual += 1
 				elif copia_realizada and not ls_hecho_despues_de_copia:
-					output = "Connection to " + ssh_host + " closed."
-					start_dialog(ssh_cp_dialogs2)
+					# Jugador hizo cp pero no verificó con ls → recordatorio final
+					start_dialog(ssh_cp_dialogs2)  # "Marcial, no te olvides de listar..."
 				else:
-					output = "Connection to " + ssh_host + " closed."
-			else:
-				output = "Connection to " + ssh_host + " closed."
+					# Jugador aún no ha hecho nada importante
+					output += "\nNo se han realizado acciones relevantes en esta sesión."
 
 			# Limpiar estado SSH
 			ssh_active = false
 			ssh_host = ""
 			ssh_user = ""
 			ssh_user_base_path = ""
-			current_path = "/"  # Regresar al sistema local
+			current_path = "/"  # Volver al sistema local
+
 			show_prompt()
 		else:
 			output = "Not connected to an SSH session. Use this command only to disconnect remote sessions."
+		return
+
+	elif command == "exit":
+		if ssh_active:
+			output = "Connection to " + ssh_host + " closed."
+
+			# Solo avanzar si hizo cp + ls
+			if mision_actual == MISION_SSH_COPIA_PRIVADO:
+				if copia_realizada and ls_hecho_despues_de_copia:
+					mision_actual += 1  # Avanzar de misión
+					output += "\n[color=green]¡Misión completada![/color]"
+				elif copia_realizada and not ls_hecho_despues_de_copia:
+					start_dialog(ssh_cp_dialogs2)  # Recordatorio final
+
+			# Limpiar estado SSH
+			ssh_active = false
+			ssh_user = ""
+			ssh_host = ""
+			ssh_user_base_path = ""
+			current_path = "/"
+			show_prompt()
+		else:
+			output = "Not connected to an SSH session."
 		return
 
 	elif command.begins_with("cp "):
@@ -1075,9 +1217,12 @@ func process_command(command: String):
 				copy_directory(source_path, dest_path)
 				output = "Directorio copiado de " + source + " a " + destination
 
-				if mision_actual == MISION_SSH_COPIA_PRIVADO and source == "Privado" and destination == "Privado.old":
-					copia_realizada = true
-					print("DEBUG: Carpeta 'Privado' copiada como 'Privado.old'")
+				# Misión SSH: Detectar si es la carpeta Privado
+				if mision_actual == MISION_SSH_COPIA_PRIVADO and current_path == "/contabilidad/Documentos" and ssh_active:
+					if source == "Privado" and destination == "Privado.old":
+						copia_realizada = true
+						ls_hecho_despues_de_copia = false
+						print("DEBUG: Carpeta 'Privado' copiada como 'Privado.old'")
 		elif FileAccess.file_exists(source_path):
 			var source_file = FileAccess.open(source_path, FileAccess.READ)
 			var content = source_file.get_as_text()
