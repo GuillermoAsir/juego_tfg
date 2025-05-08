@@ -96,7 +96,7 @@ var df_hecho = false
 # Datos simulados para df -h
 var disk_usage = [
 	{ "filesystem": "/dev/sda1", "size": "50G", "used": "25G", "avail": "25G", "use%": "50%", "mounted": "/mnt" },
-	{ "filesystem": "/dev/sdb1", "size": "100G", "used": "40G", "avail": "60G", "use%": "98%", "mounted": "/mnt" },
+	{ "filesystem": "/dev/sdb1", "size": "250G", "used": "245G", "avail": "5G", "use%": "98%", "mounted": "/mnt" },
 	{ "filesystem": "/tmpfs", "size": "4G", "used": "1G", "avail": "3G", "use%": "25%", "mounted": "/mnt" }
 ]
 
