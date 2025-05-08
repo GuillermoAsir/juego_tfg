@@ -93,6 +93,12 @@ var descargas_borradas = false
 var papelera_borrada = false
 # Estado de la nueva misión SSH + Limpiar disco
 var df_hecho = false
+# Datos simulados para df -h
+var disk_usage = [
+	{ "filesystem": "/dev/sda1", "size": "50G", "used": "25G", "avail": "25G", "use%": "50%", "mounted": "/mnt" },
+	{ "filesystem": "/dev/sdb1", "size": "100G", "used": "40G", "avail": "60G", "use%": "98%", "mounted": "/mnt" },
+	{ "filesystem": "/tmpfs", "size": "4G", "used": "1G", "avail": "3G", "use%": "25%", "mounted": "/mnt" }
+]
 
 
 #Lista de IPs permitidas
@@ -186,32 +192,35 @@ var ssh_cp_dialogs4 =[
 ]
 #Dialogos misión ssh_limpiar
 var ssh_limpiar_dialogs = {
+	"ssh_conectado": [
+		"Viejo: Ahora ya estás dentro. Creo que debe ser un problema de almacenamiento. Para ver el uso del disco, utiliza el comando:\ndf -h /contabilidad\nEn la columna 'Use%' podrás ver el porcentaje utilizado."
+	],
 	"df_alto": [
-		"Viejo: ¡Un 98% usado! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... creo que ese soy yo. Je je.\nTodo tiene solución. Empezamos con:\nsudo apt-get clean\nContraseña: SudC0nt"
+		"Viejo: ¡Un 98%! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... vaya, creo que ese soy yo. Je je. Pero no te preocupes, hay solución.\nEscribe: sudo apt-get clean\nContraseña: SudC0nt\nNo es una 'O', es un cero."
 	],
 	"apt_get_clean_ok": [
-		"Viejo: Buen trabajo. Ahora vamos a eliminar los paquetes obsoletos con:\nsudo apt-get autoclean"
+		"Viejo: Buen trabajo. Ahora sigue con: sudo apt-get autoclean"
 	],
 	"apt_get_autoclean_ok": [
 		"Viejo: Bien hecho. Siguiente paso: sudo apt-get autoremove"
 	],
 	"apt_get_autoremove_ok": [
-		"Viejo: Excelente. Ahora borramos archivos temporales:\nsudo rm -rf /tmp/*"
+		"Viejo: Excelente. Ahora dejamos esto limpio como recién estrenado. Ejecuta:\nrm -r /tmp/*"
 	],
-	"tmp_copiado_ok": [
-		"Viejo: Perfecto. Ahora ejecuta:\nsudo rm -rf /var/tmp/*"
+	"tmp_limpio": [
+		"Viejo: Perfecto. Ahora ejecuta:\n rm -r /var/tmp/*"
 	],
-	"var_tmp_copiado_ok": [
-		"Viejo: Muy bien. Ahora borra las descargas del usuario con:\nrm -rf /home/contabilidad/Descargas/*"
+	"var_tmp_limpio": [
+		"Viejo: ¡Muy bien! Ahora borramos las descargas del usuario con:\nrm -rf /contabilidad/Descargas/*"
 	],
-	"descargas_borradas_ok": [
-		"Viejo: Para finalizar, limpiamos la papelera con:\nrm -rf /home/contabilidad/.local/share/Trash/files/*\ny\nrm -rf /home/contabilidad/.local/share/Trash/info/*"
+	"descargas_borradas": [
+		"Viejo: ¡Perfecto! Ahora limpiamos la papelera con estos dos comandos:\nrm -r /contabilidad/.local/share/Trash/files/*\ny\nrm -r contabilidad/.local/share/Trash/info/*"
 	],
-	"papelera_borrada_ok": [
-		"Viejo: ¡Perfecto! Ahora verifica el uso del disco nuevamente con:\ndf -h /home/contabilidad"
+	"papelera_borrada": [
+		"Viejo: ¡Perfecto! Verifica el uso del disco nuevamente con:\ndf -h /contabilidad"
 	],
 	"df_bajo": [
-		"Viejo: ¡Un 70%! Eso ya es otra cosa. Ya podrán volver a descargarse películas... jeje, guiño guiño. Ahora puedes salir del servidor con 'exit'.",
+		"Viejo: ¡Un 70%! Eso ya es otra cosa. Ya podrán volver a descargarse películas... jeje, guiño guiño.\nAhora puedes salir del servidor con:\nexit"
 	],
 	"finalizada": [
 		"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!\nMisión terminada: Liberar espacio.\nFin del día."
@@ -838,17 +847,31 @@ func process_command(command: String):
 			#output += "[color=yellow]" + str(i + 1) + "  " + command_history[i] + "[/color]\n"
 
 	elif command.begins_with("df -h"):
-		var disk_usage = [
-			{ "filesystem": "/dev/sda1", "size": "50G", "used": "25G", "avail": "25G", "use%": "50%", "mounted": "/mnt" },
-			{ "filesystem": "/dev/sdb1", "size": "100G", "used": "40G", "avail": "60G", "use%": "40%", "mounted": "/mnt" },
-			{ "filesystem": "/tmpfs", "size": "4G", "used": "1G", "avail": "3G", "use%": "25%", "mounted": "/mnt" }
-		]
+		var args = command.split(" ")
+		var path = current_path  # Valor por defecto
 
+		if args.size() >= 2:
+			path = args[1].strip_edges()
+
+		# Mostrar salida ficticia realista
 		output = "[color=white]%-16s %-8s %-8s %-8s %-6s %s\n[/color]" % ["Filesystem", "Size", "Used", "Avail", "Use%", "Mounted on"]
-		for disk in disk_usage:
-			output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
-				disk["filesystem"], disk["size"], disk["used"], disk["avail"], disk["use%"], disk["mounted"]
-			]
+
+		# Si estamos en la misión SSH_LIMPIAR y conectados por SSH
+		if mision_actual == MISION_SSH_LIMPIAR and ssh_active and path == "/contabilidad":
+			if not (apt_clean_ejecutado and tmp_limpio and descargas_borradas and papelera_borrada):
+				output += "[color=#ff4d4d]/dev/sda1       100G   98G  2.0G  98% /contabilidad[/color]"
+				if not df_hecho:
+					df_hecho = true
+					start_dialog(ssh_limpiar_dialogs["df_alto"])
+			else:
+				output += "[color=#33cc33]/dev/sda1       100G   70G  30G  70% /home/contabilidad[/color]"
+				start_dialog(ssh_limpiar_dialogs["df_bajo"])
+		else:
+			# Salida normal para otras rutas o cuando no es la misión
+			for disk in disk_usage:
+				output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
+					disk["filesystem"], disk["size"], disk["used"], disk["avail"], disk["use%"], disk["mounted"]
+				]
 
 	elif command == "apt update":
 		output = "[color=white]Obteniendo lista de paquetes...\n[/color]"
