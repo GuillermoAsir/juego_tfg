@@ -611,25 +611,19 @@ func process_command(command: String):
 		output = "[color=white]%-16s %-8s %-8s %-8s %-6s %s\n[/color]" % ["Filesystem", "Size", "Used", "Avail", "Use%", "Mounted on"]
 
 		# Si estamos en la misión SSH_LIMPIAR y conectados por SSH
-		print("1111111111")
-		print(path)
 		if ssh_active and path == "/contabilidad":
-			print("2222")
 				#output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
 					#disk_mision_clean["filesystem"], disk_mision_clean["size"], disk_mision_clean["used"], disk_mision_clean["avail"], disk_mision_clean["use%"], disk_mision_clean["mounted"]
 				#]
-			
 			if mision_actual < MISION_CLEAN_11_DF_OK_24:
 				output += "[color=#ff4d4d]/dev/sda1       100G   98G  2.0G  98% /contabilidad[/color]"
 			else:
 				output += "[color=#33cc33]/dev/sda1       100G   70G  30G  70% /home/contabilidad[/color]"
 				
 			if mision_actual == MISION_CLEAN_2_DF_15:
-				print("3333")
 				mision_actual = MISION_CLEAN_3_APT_CLEAN_16
 				start_dialog(Dialogos.ssh_clean_dialogs2)
 			elif mision_actual == MISION_CLEAN_11_DF_OK_24:
-				print("44444444")
 				mision_actual = MISION_CLEAN_12_EXIT_25
 				start_dialog(Dialogos.ssh_clean_dialogs10)
 		else:
@@ -1015,7 +1009,7 @@ func process_command(command: String):
 				mision_actual = MISION_CLEAN_1_SSH_14
 				start_dialog(Dialogos.ssh_cp_dialogs5)
 			elif mision_actual == MISION_CLEAN_12_EXIT_25:
-				#mision_actual = 0
+				#mision_actual = FIN
 				start_dialog(Dialogos.ssh_clean_dialogs11)
 				
 
