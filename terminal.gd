@@ -16,7 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = MISION_APACHE_3_STATUS_OK_9
+var mision_actual = MISION_INICIAL_1_CD_1
 
 const MISION_INICIAL_1_CD_1 = 1
 const MISION_INICIAL_2_LS_2 = 2
@@ -69,7 +69,7 @@ var comandos_introducidos: Array[String] = [
 	#"ls",
 	#"ping 192.168.10.1",
 	#"ping 192.168.10.10",
-	#"cat IPS_El_Bohío.txt",
+	#"cat IPS_Departamentos.txt",
 	"ssh contabilidad@192.168.10.10",
 	"sudo systemctl status apache",
 	#"sudo systemctl restart apache",
@@ -138,16 +138,16 @@ func _ready():
 	save_button.pressed.connect(_on_save_button_pressed)
 	
 	# Crear archivo de misión si no existe
-	var ips_file_path = BASE_PATH + "/home/usuario1/Documentos/IPS_El_Bohío.txt"
+	var ips_file_path = BASE_PATH + "/home/usuario1/Documentos/IPS_Departamentos.txt"
 	if not FileAccess.file_exists(ips_file_path):
 		var ips_file = FileAccess.open(ips_file_path, FileAccess.WRITE)
 		if ips_file:
-			ips_file.store_string("""# IPs asignadas al Departamento de Ventas - El Bohío
+			ips_file.store_string("""# IPs asignadas a los Departamento de Cyberdyne Systems
 
-			192.168.10.10   pc_ventas_1
-			192.168.10.11   pc_ventas_2
+			192.168.10.10   pc_ventas
+			192.168.10.100   pc_contabilidad
 			192.168.10.12   impresora_oficina
-			192.168.10.254  router_sede
+			192.168.10.1  router_ventas
 
 			# Fin del archivo""")
 
@@ -454,8 +454,11 @@ func process_command(command: String):
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
 	elif command == "date":
-		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
+		var tz_offset = 7200  # Ajusta según el horario de verano (+1h en verano)
+		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system() + tz_offset)
 		output = "[color=white]" + fecha_actual + "[/color]"
+		print(output)  # Muestra la fecha y hora en la consola
+
 
 	elif command == "pwd":
 		output = "[color=white]" + current_path + "[/color]"
@@ -679,8 +682,8 @@ func process_command(command: String):
 					output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
 					start_dialog(Dialogos.ssh_cp_dialogs1)
 
-			# Misión anterior: Apache → IPS_El_Bohío.txt
-			if current_path == "/home/usuario1/Documentos" and "IPS_El_Bohío.txt" in files and mision_actual == MISION_INICIAL_2_LS_2:
+			# Misión anterior: Apache → IPS_Departamentos.txt
+			if current_path == "/home/usuario1/Documentos" and "IPS_Departamentos.txt" in files and mision_actual == MISION_INICIAL_2_LS_2:
 				mision_actual = MISION_INICIAL_3_CAT_3
 				start_dialog(Dialogos.mision_inicial_dialogs2)
 		else:
@@ -764,7 +767,7 @@ func process_command(command: String):
 				output = file.get_as_text()
 				file.close()
 
-				if mision_actual == MISION_INICIAL_3_CAT_3 and filename == "IPS_El_Bohío.txt":
+				if mision_actual == MISION_INICIAL_3_CAT_3 and filename == "IPS_Departamentos.txt":
 					mision_actual = MISION_INICIAL_4_PING10_4
 					start_dialog(Dialogos.mision_inicial_dialogs3)
 
@@ -876,7 +879,7 @@ func process_command(command: String):
 					dir.change_dir(user_sim_path)
 
 					# Crear carpetas base
-					for folder in ["boot", "dev", "lib", "lib32", "lib64", "media", "mnt", "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp", "usr"]:
+					for folder in ["boot", "dev", "lib", "lib32", "lib64", "media", "mnt", "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp", "usr", "var"]:
 						dir.make_dir(folder)
 
 					# Estructura del usuario
@@ -907,6 +910,7 @@ func process_command(command: String):
 					dir.make_dir("var/spool")
 					dir.make_dir("var/spool/mail")
 					dir.make_dir("var/run")
+					
 
 					dir.change_dir("..")  # Volver a user://
 					print("✅ Estructura de carpetas creada para:", user_sim_path)
@@ -1042,8 +1046,148 @@ func process_command(command: String):
 		show_prompt()
 		return
 
+	elif command.begins_with("help "):
+		var cmd = command.substr(5).strip_edges()
+		match cmd:
+			"cd":
+				output = "[color=green]Uso:[/color] cd [ruta]\n"
+				output += "[color=green]Descripción:[/color] Cambia al directorio especificado.\n"
+				output += "[color=green]Ejemplos:[/color]\n"
+				output += "  - [color=cyan]cd /home/usuario[/color]: Navegar al directorio personal\n"
+				output += "  - [color=cyan]cd ..[/color]: Subir un nivel en la jerarquía\n"
+				output += "  - [color=cyan]cd /[/color]: Acceder al directorio raíz\n"
+				output += "[color=green]Notas:[/color] Soporta rutas absolutas (ej: /etc) y relativas (ej: Documentos)."
+			"ls":
+				output = "[color=green]Uso:[/color] ls\n"
+				output += "[color=green]Descripción:[/color] Lista los archivos y directorios en la ubicación actual.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]ls[/color]\n"
+				output += "[color=green]Notas:[/color] Muestra directorios en azul y archivos en blanco."
+			"mkdir":
+				output = "[color=green]Uso:[/color] mkdir [nombre]\n"
+				output += "[color=green]Descripción:[/color] Crea un nuevo directorio.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]mkdir nueva_carpeta[/color]"
+			"touch":
+				output = "[color=green]Uso:[/color] touch [archivo]\n"
+				output += "[color=green]Descripción:[/color] Crea un archivo vacío.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]touch archivo.txt[/color]"
+			"rm":
+				output = "[color=green]Uso:[/color] rm [-r] [archivo/directorio]\n"
+				output += "[color=green]Descripción:[/color] Elimina archivos o directorios (con -r).\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]rm -r carpeta[/color]: Elimina recursivamente una carpeta."
+			"cat":
+				output = "[color=green]Uso:[/color] cat [archivo]\n"
+				output += "[color=green]Descripción:[/color] Muestra el contenido de un archivo.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]cat archivo.txt[/color]"
+			"clear":
+				output = "[color=green]Uso:[/color] clear\n"
+				output += "[color=green]Descripción:[/color] Limpia la pantalla de la terminal."
+			"ping":
+				output = "[color=green]Uso:[/color] ping [host]\n"
+				output += "[color=green]Descripción:[/color] Verifica conectividad con otro dispositivo.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]ping google.com[/color]"
+			"ssh":
+				output = "[color=green]Uso:[/color] ssh [usuario@host]\n"
+				output += "[color=green]Descripción:[/color] Conecta a un servidor remoto via SSH.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]ssh usuario@192.168.10.1[/color]"
+			"exit":
+				output = "[color=green]Uso:[/color] exit\n"
+				output += "[color=green]Descripción:[/color] Sale de una sesión SSH."
+			"apt update":
+				output = "[color=green]Uso:[/color] apt update\n"
+				output += "[color=green]Descripción:[/color] Actualiza la lista de paquetes disponibles."
+			"apt upgrade":
+				output = "[color=green]Uso:[/color] apt upgrade\n"
+				output += "[color=green]Descripción:[/color] Actualiza los paquetes instalados."
+			"sudo apt-get clean":
+				output = "[color=green]Uso:[/color] sudo apt-get clean\n"
+				output += "[color=green]Descripción:[/color] Limpia la caché de paquetes descargados."
+			"sudo apt-get autoclean":
+				output = "[color=green]Uso:[/color] sudo apt-get autoclean\n"
+				output += "[color=green]Descripción:[/color] Limpia caché obsoleta."
+			"sudo apt-get autoremove":
+				output = "[color=green]Uso:[/color] sudo apt-get autoremove\n"
+				output += "[color=green]Descripción:[/color] Elimina paquetes no necesarios."
+			"sudo systemctl status apache":
+				output = "[color=green]Uso:[/color] sudo systemctl status apache\n"
+				output += "[color=green]Descripción:[/color] Muestra el estado del servidor Apache."
+			"sudo systemctl restart apache":
+				output = "[color=green]Uso:[/color] sudo systemctl restart apache\n"
+				output += "[color=green]Descripción:[/color] Reinicia el servidor Apache."
+			"date":
+				output = "[color=green]Uso:[/color] date\n"
+				output += "[color=green]Descripción:[/color] Muestra la fecha y hora actual."
+			"uptime":
+				output = "[color=green]Uso:[/color] uptime\n"
+				output += "[color=green]Descripción:[/color] Muestra el tiempo de ejecución del sistema."
+			"cal":
+				output = "[color=green]Uso:[/color] cal\n"
+				output += "[color=green]Descripción:[/color] Muestra el calendario del mes actual."
+			"df -h":
+				output = "[color=green]Uso:[/color] df -h\n"
+				output += "[color=green]Descripción:[/color] Muestra el espacio en disco de forma legible."
+			"nano":
+				output = "[color=green]Uso:[/color] nano [archivo]\n"
+				output += "[color=green]Descripción:[/color] Edita un archivo de texto."
+			"echo":
+				output = "[color=green]Uso:[/color] echo [texto]\n"
+				output += "[color=green]Descripción:[/color] Imprime texto en la terminal."
+			"cp":
+				output = "[color=green]Uso:[/color] cp [-r] [origen] [destino]\n"
+				output += "[color=green]Descripción:[/color] Copia archivos o directorios (con -r).\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]cp archivo.txt copia.txt[/color]"
+			"diff":
+				output = "[color=green]Uso:[/color] diff [archivo1] [archivo2]\n"
+				output += "[color=green]Descripción:[/color] Compara dos archivos línea por línea."
+			"head":
+				output = "[color=green]Uso:[/color] head [-n] [archivo]\n"
+				output += "[color=green]Descripción:[/color] Muestra las primeras líneas de un archivo.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]head -5 archivo.txt[/color]"
+			"tail":
+				output = "[color=green]Uso:[/color] tail [-n] [archivo]\n"
+				output += "[color=green]Descripción:[/color] Muestra las últimas líneas de un archivo.\n"
+				output += "[color=green]Ejemplo:[/color] [color=cyan]tail -10 archivo.txt[/color]"
+			_:
+				output = "[color=red]Comando desconocido: $cmd. Usa 'help' para ver comandos disponibles.[/color]"
 	elif command == "help":
-		output = "Comandos disponibles:\ncd [ruta], ls, mkdir [nombre], touch [archivo], nano [archivo], rm [-r] [archivo/directorio], cat [archivo], clear, help"
+		output = "[color=green]Navegación y gestión de archivos:[/color]\n"
+		output += "  - [color=yellow]cd[/color] [ruta]: Cambiar directorio actual\n"
+		output += "  - [color=yellow]ls[/color]: Listar contenido del directorio\n"
+		output += "  - [color=yellow]pwd[/color]: Mostrar ruta del directorio actual\n"
+		output += "  - [color=yellow]mkdir[/color] [nombre]: Crear un directorio\n"
+		output += "  - [color=yellow]touch[/color] [archivo]: Crear un archivo vacío\n"
+		output += "  - [color=yellow]rm[/color] [-r] [archivo/directorio]: Eliminar archivos o directorios\n"
+		output += "  - [color=yellow]cp[/color] [-r] [origen] [destino]: Copiar archivos o directorios\n"
+		output += "  - [color=yellow]clear[/color]: Limpiar la pantalla\n\n"
+
+		output += "[color=green]Edición de texto y visualización:[/color]\n"
+		output += "  - [color=yellow]nano[/color] [archivo]: Editar un archivo\n"
+		output += "  - [color=yellow]cat[/color] [archivo]: Mostrar contenido de un archivo\n"
+		output += "  - [color=yellow]echo[/color] [texto]: Imprimir texto en pantalla\n"
+		output += "  - [color=yellow]head[/color] [-n] [archivo]: Mostrar primeras líneas de un archivo\n"
+		output += "  - [color=yellow]tail[/color] [-n] [archivo]: Mostrar últimas líneas de un archivo\n"
+		output += "  - [color=yellow]diff[/color] [archivo1] [archivo2]: Comparar dos archivos\n\n"
+
+		output += "[color=green]Redes y diagnóstico:[/color]\n"
+		output += "  - [color=yellow]ping[/color] [host]: Verificar conectividad\n"
+		output += "  - [color=yellow]ssh[/color] [usuario@host]: Conectar a un servidor remoto\n"
+		output += "  - [color=yellow]exit[/color]: Salir de una sesión SSH\n\n"
+
+		output += "[color=green]Gestión de paquetes y sistema:[/color]\n"
+		output += "  - [color=yellow]apt update[/color]: Actualizar lista de paquetes\n"
+		output += "  - [color=yellow]apt upgrade[/color]: Actualizar paquetes\n"
+		output += "  - [color=yellow]sudo apt-get clean[/color]: Limpiar caché de paquetes descargados\n"
+		output += "  - [color=yellow]sudo apt-get autoclean[/color]: Limpiar caché obsoleta\n"
+		output += "  - [color=yellow]sudo apt-get autoremove[/color]: Eliminar paquetes no necesarios\n"
+		output += "  - [color=yellow]sudo systemctl status apache[/color]: Ver estado de Apache\n"
+		output += "  - [color=yellow]sudo systemctl restart apache[/color]: Reiniciar Apache\n\n"
+
+		output += "[color=green]Información del sistema:[/color]\n"
+		output += "  - [color=yellow]date[/color]: Mostrar fecha y hora\n"
+		output += "  - [color=yellow]uptime[/color]: Mostrar tiempo de ejecución\n"
+		output += "  - [color=yellow]cal[/color]: Mostrar calendario\n"
+		output += "  - [color=yellow]df -h[/color]: Ver espacio en disco\n\n"
+
+		output += "[color=blue]Consejo de misión:[/color] Usa [color=yellow]ls[/color] para encontrar archivos clave en /home/usuario/Documentos"
 
 	elif command == "":
 		pass

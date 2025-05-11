@@ -43,18 +43,17 @@ metadata/_edit_group_ = true
 [node name="Timer" type="Timer" parent="Background/MarginContainer/Rows/GameInfo"]
 
 [node name="NanoPanel" type="Panel" parent="."]
-visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 1150.0
+offset_bottom = 644.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_80nbo")
 
 [node name="Editor" type="TextEdit" parent="NanoPanel"]
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
-offset_right = 8.0
-offset_bottom = 8.0
+offset_right = 1154.0
+offset_bottom = 642.0
 theme_override_colors/background_color = Color(0.189703, 0.637374, 0.4209, 1)
 
 [node name="GuardarBoton" type="Button" parent="NanoPanel"]
