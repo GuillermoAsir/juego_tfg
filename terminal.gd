@@ -16,11 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-<<<<<<< HEAD
-var mision_actual = MISION_INICIAL_1_CD_1
-=======
-var mision_actual = MISION_CLEAN_11_DF_OK_24
->>>>>>> origin/main
+var mision_actual = MISION_SSH_4_EXIT_13 
 
 const MISION_INICIAL_1_CD_1 = 1
 const MISION_INICIAL_2_LS_2 = 2
@@ -81,18 +77,12 @@ var para_pam_file_path = BASE_PATH_CONTABILIDAD + "/home/contabilidad/Documentos
 
 # Variables para controlar lo que se ha introducido por consola
 var comandos_introducidos: Array[String] = [
-	#"cd home/usuario1/Documentos",
+	#"cd home/usuario/Documentos",
 	#"ls",
 	#"ping 192.168.10.1",
 	#"ping 192.168.10.10",
-<<<<<<< HEAD
 	#"cat IPS_Departamentos.txt",
-	"ssh contabilidad@192.168.10.10",
-	"sudo systemctl status apache",
-=======
-	#"cat IPS_El_Bohío.txt",
 	#"sudo systemctl status apache",
->>>>>>> origin/main
 	#"sudo systemctl restart apache",
 	"ssh contabilidad@192.168.10.100",
 	#"rm -r /tmp/*",
@@ -157,23 +147,6 @@ func _ready():
 	dialog_box.visible = false  # Inicializar el diálogo oculto
 	show_prompt()
 	save_button.pressed.connect(_on_save_button_pressed)
-<<<<<<< HEAD
-	
-	# Crear archivo de misión si no existe
-	var ips_file_path = BASE_PATH + "/home/usuario1/Documentos/IPS_Departamentos.txt"
-	if not FileAccess.file_exists(ips_file_path):
-		var ips_file = FileAccess.open(ips_file_path, FileAccess.WRITE)
-		if ips_file:
-			ips_file.store_string("""# IPs asignadas a los Departamento de Cyberdyne Systems
-
-			192.168.10.10   pc_ventas
-			192.168.10.100   pc_contabilidad
-			192.168.10.12   impresora_oficina
-			192.168.10.1  router_ventas
-
-			# Fin del archivo""")
-=======
->>>>>>> origin/main
 
 	if not cursor_timer: #Verifica si el timer está inicializado
 		cursor_timer = Timer.new() #Crea una nueva instancia de Timer
@@ -429,7 +402,7 @@ func process_command(command: String):
 			print("Ruta actualizada a: " + current_path)
 
 			# Misión 2 (opcional, solo si ya usabas esta lógica)
-			if current_path == "/home/usuario1/Documentos" and mision_actual == MISION_INICIAL_1_CD_1:
+			if current_path == "/home/usuario/Documentos" and mision_actual == MISION_INICIAL_1_CD_1:
 				mision_actual = MISION_INICIAL_2_LS_2
 				start_dialog(Dialogos.mision_inicial_dialogs1)
 		else:
@@ -490,11 +463,8 @@ func process_command(command: String):
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
 	elif command == "date":
-		var tz_offset = 7200  # Ajusta según el horario de verano (+1h en verano)
-		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system() + tz_offset)
+		var fecha_actual = Time.get_datetime_string_from_unix_time(Time.get_unix_time_from_system())
 		output = "[color=white]" + fecha_actual + "[/color]"
-		print(output)  # Muestra la fecha y hora en la consola
-
 
 	elif command == "pwd":
 		output = "[color=white]" + current_path + "[/color]"
@@ -714,13 +684,8 @@ func process_command(command: String):
 				if mision_actual == MISION_SSH_3_LS_12:
 					mision_actual = MISION_SSH_4_EXIT_13
 
-<<<<<<< HEAD
 			# Misión anterior: Apache → IPS_Departamentos.txt
-			if current_path == "/home/usuario1/Documentos" and "IPS_Departamentos.txt" in files and mision_actual == MISION_INICIAL_2_LS_2:
-=======
-			# Misión anterior: Apache → IPS_El_Bohío.txt
-			elif mision_actual == MISION_INICIAL_2_LS_2 and current_path == "/home/usuario1/Documentos" and "IPS_El_Bohío.txt" in files:
->>>>>>> origin/main
+			elif mision_actual == MISION_INICIAL_2_LS_2 and current_path == "/home/usuario/Documentos" and "IPS_Departamentos.txt" in files:
 				mision_actual = MISION_INICIAL_3_CAT_3
 				start_dialog(Dialogos.mision_inicial_dialogs2)
 		else:
@@ -980,7 +945,6 @@ func process_command(command: String):
 					dir.make_dir("var/spool")
 					dir.make_dir("var/spool/mail")
 					dir.make_dir("var/run")
-					
 
 					dir.change_dir("..")  # Volver a user://
 					print("✅ Estructura de carpetas creada para:", user_sim_path)

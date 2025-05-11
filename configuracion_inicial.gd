@@ -5,16 +5,16 @@ const BASE_PATH = "user://ubuntu_sim"  # Ruta real base
 func _ready():
 	crear_estructura_directorios()
 	
-	var ips_file_path = BASE_PATH + "/home/usuario1/Documentos/IPS_El_Bohío.txt"
+	var ips_file_path = BASE_PATH + "/home/usuario/Documentos/IPS_Departamentos.txt"
 	if not FileAccess.file_exists(ips_file_path):
 		var ips_file = FileAccess.open(ips_file_path, FileAccess.WRITE)
 		if ips_file:
-			ips_file.store_string("""# IPs asignadas al Departamento de Ventas - El Bohío
+			ips_file.store_string("""# IPs asignadas a los departamentos de Cyberdyne Systems
 
-			192.168.10.10   pc_ventas_1
-			192.168.10.11   pc_ventas_2
+			192.168.10.10   pc_ventas
+			192.168.10.100   pc_contabilidad
 			192.168.10.12   impresora_oficina
-			192.168.10.254  router_sede
+			192.168.10.1  router_ventas
 
 			# Fin del archivo""")
 	
@@ -34,12 +34,12 @@ func crear_estructura_directorios():
 				dir.make_dir(folder)
 
 		# HOME
-		if not dir.dir_exists("home/usuario1"):
-			dir.make_dir_recursive("home/usuario1")
+		if not dir.dir_exists("home/usuario"):
+			dir.make_dir_recursive("home/usuario")
 		var user_subfolders = ["Documentos", "Descargas", "Escritorio", "Imágenes", "Música", "Vídeos"]
 		for subfolder in user_subfolders:
-			if not dir.dir_exists("home/usuario1/" + subfolder):
-				dir.make_dir("home/usuario1/" + subfolder)
+			if not dir.dir_exists("home/usuario/" + subfolder):
+				dir.make_dir("home/usuario/" + subfolder)
 
 		# ETC
 		var etc_files = ["passwd", "group", "shadow", "fstab", "hostname", "bash.bashrc", "crontab"]
@@ -103,4 +103,3 @@ func crear_estructura_directorios():
 				if f:
 					f.store_string("Contenido simulado de " + filename)
 					f.close()
-#hola

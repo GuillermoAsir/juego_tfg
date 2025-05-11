@@ -12,7 +12,7 @@ var mision_inicial_dialogs2 = [
 	"¡Perfecto! Has encontrado el archivo `IPS_Departamentos.txt`.\n" +
 	"Ahora falta un paso más: ver el contenido de dicho fichero.\n" +
 	"Para ello vas a usar el comando `cat` seguido del nombre del fichero,\n" +
-	"por ejemplo: `cat IPS_Departamentos.txt`. ¡Vamos, usa a ese gatito!"
+	"por ejemplo: `cat IPS_El_Bohío.txt`. ¡Vamos, usa a ese gatito!"
 ]
 
 var mision_inicial_dialogs3 = [
@@ -28,7 +28,7 @@ var mision_inicial_dialogs4 = [
 ]
 
 var mision_inicial_dialogs5 = [
-	"Intentalo con el ping 192.168.10.1"
+	"Intentalo con el ping 192.168.10.10"
 ]
 var mision_inicial_dialogs6 = [
 	"¡Por todos los nodos! Al router le pasa algo,\n" +
@@ -59,7 +59,7 @@ var apache_dialogs3 = [
 	"Departamento de Contabilidad: Hola soy Miguel, queria pediros si podriáis realizar una copia a la carpeta llamada\n"+
 	"Privado esta situado en Documentos, es importante para mi y no sais unos cotillas nada!",
 	"Viejo: Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de  \n"+
-	"solo tienes que ir a la terminal y escribir ssh contabilidad@<ip del equipo>. Recuerda donde están guardas las Ips."
+	"solo tienes que ir a la terminal y escribir ssh contabilidad@192.168.10.100. Recuerda donde están guardas las Ips."
 ]
 
 
@@ -82,7 +82,11 @@ var ssh_cp_dialogs4 =[
 	"Cuenta cuenta..."
 ]
 var ssh_cp_dialogs5 = [
-	"Departamento de Contabilidad: Hola, le hablamos desde el departamento de contabilidad. No podemos guardar nada más en el ordenador. Un saludo"
+	"Departamento de Contabilidad: Hola, le hablamos desde el departamento de contabilidad.\n" +
+	"No podemos guardar nada más en el ordenador. Un saludo",
+	"Me da mucha pereza ir para ya, vas a conectarte con el servicio ssh al equipo, \n" + 
+	"es muy sencillo solo tienes que ir a la terminal y escribir ssh contabilidad@<Ip Contabilidad>. \n" +
+	"Recuerda donde están guardas las Ips."
 ] 
 
 
