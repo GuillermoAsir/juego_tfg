@@ -16,7 +16,11 @@ extends Control
 
 
 #Variables para saber en que misión está
+<<<<<<< HEAD
 var mision_actual = MISION_INICIAL_1_CD_1
+=======
+var mision_actual = MISION_CLEAN_11_DF_OK_24
+>>>>>>> origin/main
 
 const MISION_INICIAL_1_CD_1 = 1
 const MISION_INICIAL_2_LS_2 = 2
@@ -30,11 +34,23 @@ const MISION_APACHE_2_RESTART_8 = 8
 const MISION_APACHE_3_STATUS_OK_9 = 9
 
 const MISION_SSH_1_10 = 10
-const MISION_SSH_2_11 = 11
-const MISION_SSH_3_12 = 12
-const MISION_SSH_4_13 = 13
-const MISION_SSH_COPIA_PRIVADO = 10
-const MISION_SSH_LIMPIAR = 11
+const MISION_SSH_2_CP_11 = 11
+const MISION_SSH_3_LS_12 = 12
+const MISION_SSH_4_EXIT_13 = 13
+
+const MISION_CLEAN_1_SSH_14 = 14
+const MISION_CLEAN_2_DF_15 = 15
+const MISION_CLEAN_3_APT_CLEAN_16 = 16
+const MISION_CLEAN_4_APT_AUTOCLEAN_17 = 17
+const MISION_CLEAN_5_AUTOREMOVE_18 = 18
+const MISION_CLEAN_6_RM_TMP_19 = 19
+const MISION_CLEAN_7_RM_VAR_20 = 20
+const MISION_CLEAN_8_RM_DESCARGAS_21 = 21
+const MISION_CLEAN_9_RM_SHARE_FILES_22 = 22
+const MISION_CLEAN_10_RM_SHARE_INFO_23 = 23
+const MISION_CLEAN_11_DF_OK_24 = 24
+const MISION_CLEAN_12_EXIT_25 = 25
+
 
 # Variables principales
 var current_command = ""
@@ -69,10 +85,22 @@ var comandos_introducidos: Array[String] = [
 	#"ls",
 	#"ping 192.168.10.1",
 	#"ping 192.168.10.10",
+<<<<<<< HEAD
 	#"cat IPS_Departamentos.txt",
 	"ssh contabilidad@192.168.10.10",
 	"sudo systemctl status apache",
+=======
+	#"cat IPS_El_Bohío.txt",
+	#"sudo systemctl status apache",
+>>>>>>> origin/main
 	#"sudo systemctl restart apache",
+	"ssh contabilidad@192.168.10.100",
+	#"rm -r /tmp/*",
+	#"rm -r /var/tmp/*",
+	#"rm -rf /contabilidad/Descargas/*",
+	#"rm -r /contabilidad/.local/share/Trash/files/*",
+	#"rm -r contabilidad/.local/share/Trash/info/*",
+	"df -h /contabilidad"
 	]
 var comando_actual = null
 
@@ -88,22 +116,6 @@ var ssh_active = false  # Indica si el jugador está conectado por SSH
 var ssh_host = ""       # Guarda el nombre del host al que está conectado
 var ssh_user = ""       # Guarda el nombre de usuario
 #var entorno_actual = "local"  # Puede ser "local" o "remoto"
-#variables misión ssh_copia
-# Variables globales de estado
-var copia_realizada = false
-var ls_hecho_despues_de_copia = false
-
-# Estado de la misión "Limpiar espacio"
-var df_ejecutado = false
-var apt_clean_ejecutado = false
-var apt_autoclean_ejecutado = false
-var apt_autoremove_ejecutado = false
-var tmp_limpio = false
-var var_tmp_limpio = false
-var descargas_borradas = false
-var papelera_borrada = false
-# Estado de la nueva misión SSH + Limpiar disco
-var df_hecho = false
 
 # Datos simulados para df -h
 var disk_usage = [
@@ -111,6 +123,15 @@ var disk_usage = [
 	{ "filesystem": "/dev/sdb1", "size": "250G", "used": "245G", "avail": "5G", "use%": "98%", "mounted": "/mnt" },
 	{ "filesystem": "/tmpfs", "size": "4G", "used": "1G", "avail": "3G", "use%": "25%", "mounted": "/mnt" }
 ]
+
+#var disk_mision_clean = { 
+	#"filesystem": "/dev/sda1", 
+	#"size": "100G", 
+	#"used": "98G", 
+	#"avail": "2.0G", 
+	#"use%": "98%", 
+	#"mounted": "/home/contabilidad",
+#}
 
 
 #Lista de IPs permitidas
@@ -136,6 +157,7 @@ func _ready():
 	dialog_box.visible = false  # Inicializar el diálogo oculto
 	show_prompt()
 	save_button.pressed.connect(_on_save_button_pressed)
+<<<<<<< HEAD
 	
 	# Crear archivo de misión si no existe
 	var ips_file_path = BASE_PATH + "/home/usuario1/Documentos/IPS_Departamentos.txt"
@@ -150,6 +172,8 @@ func _ready():
 			192.168.10.1  router_ventas
 
 			# Fin del archivo""")
+=======
+>>>>>>> origin/main
 
 	if not cursor_timer: #Verifica si el timer está inicializado
 		cursor_timer = Timer.new() #Crea una nueva instancia de Timer
@@ -430,6 +454,10 @@ func process_command(command: String):
 					output += "[color=yellow]No hay archivos en caché que limpiar.[/color]\n"
 				else:
 					output += "[color=green]Caché limpiada correctamente. Archivos eliminados: " + str(count) + "[/color]\n"
+				
+				if mision_actual == MISION_CLEAN_3_APT_CLEAN_16:
+					mision_actual = MISION_CLEAN_4_APT_AUTOCLEAN_17
+					start_dialog(Dialogos.ssh_clean_dialogs3)
 			else:
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
@@ -440,6 +468,10 @@ func process_command(command: String):
 				await get_tree().create_timer(1.0).timeout
 				var count_autoclean = Funciones.delete_files_in("user://ubuntu_sim/var/cache/apt/archives")
 				output += "[color=green]Archivos obsoletos eliminados: " + str(count_autoclean) + "[/color]\n"
+				
+				if mision_actual == MISION_CLEAN_4_APT_AUTOCLEAN_17:
+					mision_actual = MISION_CLEAN_5_AUTOREMOVE_18
+					start_dialog(Dialogos.ssh_clean_dialogs4)
 			else:
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
@@ -450,6 +482,10 @@ func process_command(command: String):
 				await get_tree().create_timer(1.0).timeout
 				var count_autoremove = Funciones.delete_files_in("user://ubuntu_sim/var/lib/apt/lists")
 				output += "[color=green]Paquetes no necesarios eliminados: " + str(count_autoremove) + "[/color]\n"
+				
+				if mision_actual == MISION_CLEAN_5_AUTOREMOVE_18:
+					mision_actual = MISION_CLEAN_6_RM_TMP_19
+					start_dialog(Dialogos.ssh_clean_dialogs5)
 			else:
 				output = "[color=red]Contraseña incorrecta. No tienes permisos para ejecutar este comando.[/color]"
 
@@ -599,23 +635,28 @@ func process_command(command: String):
 		var path = current_path  # Valor por defecto
 
 		if args.size() >= 2:
-			path = args[1].strip_edges()
+			path = args[2].strip_edges()
 
 		# Mostrar salida ficticia realista
 		output = "[color=white]%-16s %-8s %-8s %-8s %-6s %s\n[/color]" % ["Filesystem", "Size", "Used", "Avail", "Use%", "Mounted on"]
 
 		# Si estamos en la misión SSH_LIMPIAR y conectados por SSH
-		if mision_actual == MISION_SSH_LIMPIAR and ssh_active and path == "/contabilidad":
-			if not (apt_clean_ejecutado and tmp_limpio and descargas_borradas and papelera_borrada):
+		if ssh_active and path == "/contabilidad":
+				#output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
+					#disk_mision_clean["filesystem"], disk_mision_clean["size"], disk_mision_clean["used"], disk_mision_clean["avail"], disk_mision_clean["use%"], disk_mision_clean["mounted"]
+				#]
+			if mision_actual < MISION_CLEAN_11_DF_OK_24:
 				output += "[color=#ff4d4d]/dev/sda1       100G   98G  2.0G  98% /contabilidad[/color]"
-				if not df_hecho:
-					df_hecho = true
-					start_dialog(Dialogos.ssh_limpiar_dialogs2)
 			else:
 				output += "[color=#33cc33]/dev/sda1       100G   70G  30G  70% /home/contabilidad[/color]"
-				start_dialog(Dialogos.ssh_limpiar_dialogs10)
+				
+			if mision_actual == MISION_CLEAN_2_DF_15:
+				mision_actual = MISION_CLEAN_3_APT_CLEAN_16
+				start_dialog(Dialogos.ssh_clean_dialogs2)
+			elif mision_actual == MISION_CLEAN_11_DF_OK_24:
+				mision_actual = MISION_CLEAN_12_EXIT_25
+				start_dialog(Dialogos.ssh_clean_dialogs10)
 		else:
-			# Salida normal para otras rutas o cuando no es la misión
 			for disk in disk_usage:
 				output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
 					disk["filesystem"], disk["size"], disk["used"], disk["avail"], disk["use%"], disk["mounted"]
@@ -669,21 +710,17 @@ func process_command(command: String):
 				output += "[color=white]" + file_name + "[/color] "
 
 			# Misión SSH + Copia
-			if mision_actual == MISION_SSH_COPIA_PRIVADO and current_path == "/contabilidad/Documentos" and ssh_active:
-				if "Privado.old" in dirs:
-					if copia_realizada and not ls_hecho_despues_de_copia:
-						ls_hecho_despues_de_copia = true
-						output += "\n[color=green]Viejo: Muy bien, ahora sal del ordenador del empleado con 'exit'.[/color]"
-						start_dialog(Dialogos.ssh_cp_dialogs2)
-					elif not copia_realizada:
-						output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
-						start_dialog(Dialogos.ssh_cp_dialogs1)
-				elif not copia_realizada:
-					output += "\n[color=yellow]Viejo: Marcial, no te olvides de listar para asegurarte de que se realizó bien la copia.[/color]"
-					start_dialog(Dialogos.ssh_cp_dialogs1)
+			if ssh_active and current_path == "/contabilidad/Documentos":
+				if mision_actual == MISION_SSH_3_LS_12:
+					mision_actual = MISION_SSH_4_EXIT_13
 
+<<<<<<< HEAD
 			# Misión anterior: Apache → IPS_Departamentos.txt
 			if current_path == "/home/usuario1/Documentos" and "IPS_Departamentos.txt" in files and mision_actual == MISION_INICIAL_2_LS_2:
+=======
+			# Misión anterior: Apache → IPS_El_Bohío.txt
+			elif mision_actual == MISION_INICIAL_2_LS_2 and current_path == "/home/usuario1/Documentos" and "IPS_El_Bohío.txt" in files:
+>>>>>>> origin/main
 				mision_actual = MISION_INICIAL_3_CAT_3
 				start_dialog(Dialogos.mision_inicial_dialogs2)
 		else:
@@ -727,16 +764,46 @@ func process_command(command: String):
 
 	elif command.begins_with("rm "):
 			var args = command.substr(3).strip_edges().split(" ")
-			var recursive = "-r" in args or "--recursive" in args
+			var recursive = "-r" in args or "-rf" in args or "--recursive" in args
 			var target = args[-1]  # último argumento (soporta: rm -r carpeta)
-
+			var limpiar_contenido_carpeta = false
+			
+			if target.ends_with("/*"):
+				limpiar_contenido_carpeta = true
+				target = target.trim_suffix("*")
+			
 			var full_path = get_full_path() + "/" + target
-
-			if DirAccess.dir_exists_absolute(full_path):
+			
+			var directorio = DirAccess.dir_exists_absolute(full_path)
+			if directorio:
 				if recursive:
-					if DirAccess.dir_exists_absolute(full_path):
+					if not limpiar_contenido_carpeta:
 						Funciones.remove_directory_recursive(full_path)
 						output = "Directorio eliminado: " + target
+					else:
+						Funciones.remove_directory_contents(full_path)
+						output = "Eliminado el contenido del directorio: " + target
+					
+						if mision_actual == MISION_CLEAN_6_RM_TMP_19 and target == "/tmp/":
+							mision_actual = MISION_CLEAN_7_RM_VAR_20
+							start_dialog(Dialogos.ssh_clean_dialogs6)
+							
+						elif mision_actual == MISION_CLEAN_7_RM_VAR_20 and target.ends_with("var/tmp/"):
+							mision_actual = MISION_CLEAN_8_RM_DESCARGAS_21
+							start_dialog(Dialogos.ssh_clean_dialogs7)
+							
+						elif mision_actual == MISION_CLEAN_8_RM_DESCARGAS_21 and target.ends_with("contabilidad/Descargas/"):
+							mision_actual = MISION_CLEAN_9_RM_SHARE_FILES_22
+							start_dialog(Dialogos.ssh_clean_dialogs8)
+							
+						elif mision_actual == MISION_CLEAN_9_RM_SHARE_FILES_22 and target.ends_with("contabilidad/.local/share/Trash/files/"):
+							mision_actual = MISION_CLEAN_10_RM_SHARE_INFO_23
+							start_dialog(Dialogos.ssh_clean_dialogs12)
+							
+						elif mision_actual == MISION_CLEAN_10_RM_SHARE_INFO_23 and target.ends_with("contabilidad/.local/share/Trash/info/"):
+							mision_actual = MISION_CLEAN_11_DF_OK_24
+							start_dialog(Dialogos.ssh_clean_dialogs9)
+						
 				else:
 					output = "No se pudo eliminar el directorio (no existe): " + target
 			elif FileAccess.file_exists(full_path):
@@ -754,6 +821,10 @@ func process_command(command: String):
 						output = "No se pudo acceder al directorio padre para eliminar '" + target + "'."
 			else:
 				output = "rm: no se puede eliminar '" + target + "': no existe tal archivo o directorio."
+				
+			#disk_mision_clean["used"] = str(used_gb) + "G"
+			#disk_mision_clean["avail"] = str(avail_gb) + "G"
+			#disk_mision_clean["use%"] = str(use_percent) + "%"
 
 	elif command.begins_with("cat "):
 		var filename = command.substr(4).strip_edges()
@@ -772,7 +843,7 @@ func process_command(command: String):
 					start_dialog(Dialogos.mision_inicial_dialogs3)
 
 				# Detectar lectura del archivo Para_Pam.txt durante la misión SSH
-				elif mision_actual == MISION_SSH_COPIA_PRIVADO and filename == "Para_Pam.txt":
+				elif mision_actual >= MISION_SSH_1_10 and mision_actual <= MISION_SSH_4_EXIT_13 and filename == "Para_Pam.txt":
 					start_dialog(Dialogos.ssh_cp_dialogs4)
 					print("DEBUG: Archivo 'Para_Pam.txt' leído. Saltando diálogo de cotilla.")
 			else:
@@ -785,7 +856,7 @@ func process_command(command: String):
 		if ping_host == "":
 			output = "Error: Debes proporcionar una dirección IP o nombre de host."
 		else:
-			if is_valid_ip(ping_host) or resolve_hostname(ping_host):
+			if Funciones.is_valid_ip(ping_host) or Funciones.resolve_hostname(ping_host):
 				if mision_actual == 5 and ping_host == "192.168.10.1":
 					_ping_erroneo()
 				else:
@@ -823,7 +894,6 @@ func process_command(command: String):
 						#output = "No se puede reiniciar Apache sin verificar su estado primero."
 				else:
 					output = "Comando incorrecto. Usa sudo systemctl status apache o sudo systemctl restart apache."
-
 
 	elif command.begins_with("sudo "):
 		if not sudo_authenticated:
@@ -951,8 +1021,11 @@ func process_command(command: String):
 
 				# Si venimos de Apache, iniciamos esta nueva misión
 				if mision_actual == MISION_SSH_1_10:
-					mision_actual = MISION_SSH_2_11
+					mision_actual = MISION_SSH_2_CP_11
 					start_dialog(Dialogos.ssh_cp_dialogs1)
+				elif mision_actual == MISION_CLEAN_1_SSH_14:
+					mision_actual = MISION_CLEAN_2_DF_15
+					start_dialog(Dialogos.ssh_clean_dialogs1)
 
 			else:
 				output = "Error accediendo al sistema de archivos."
@@ -963,20 +1036,18 @@ func process_command(command: String):
 		if ssh_active:
 			output = "Connection to " + ssh_host + " closed."
 
-			# Si estamos en la misión SSH_COPIA_PRIVADO
-			if mision_actual == MISION_SSH_COPIA_PRIVADO:
-				if copia_realizada and ls_hecho_despues_de_copia:
-					# Misión completada: jugador hizo cp y verificó con ls
-					start_dialog(Dialogos.ssh_cp_dialogs3)  # "Muy bien, ahora sal del ordenador..."
-					mision_actual += 1
-				elif copia_realizada and not ls_hecho_despues_de_copia:
-					# Jugador hizo cp pero no verificó con ls → recordatorio
-					start_dialog(Dialogos.ssh_cp_dialogs2)  # "Marcial, no te olvides de listar..."
-					mision_actual += 1
-					# Aunque no haya hecho ls, avanzamos igual para no quedar atascados
-				else:
-					# No ha hecho nada relevante → mensaje opcional
-					output += "\nNo se han realizado acciones relevantes en esta sesión."
+			if mision_actual == MISION_SSH_3_LS_12:
+				start_dialog(Dialogos.ssh_cp_dialogs2)
+				show_prompt()
+				return
+				
+			if mision_actual == MISION_SSH_4_EXIT_13:
+				mision_actual = MISION_CLEAN_1_SSH_14
+				start_dialog(Dialogos.ssh_cp_dialogs5)
+			elif mision_actual == MISION_CLEAN_12_EXIT_25:
+				#mision_actual = FIN
+				start_dialog(Dialogos.ssh_clean_dialogs11)
+				
 
 			# Limpiar estado SSH
 			ssh_active = false
@@ -1021,11 +1092,11 @@ func process_command(command: String):
 				output = "Directorio copiado de " + source + " a " + destination
 
 				# Misión SSH: Detectar si es la carpeta Privado
-				if mision_actual == MISION_SSH_COPIA_PRIVADO and current_path == "/contabilidad/Documentos" and ssh_active:
-					if source == "Privado" and destination == "Privado.old":
-						copia_realizada = true
-						ls_hecho_despues_de_copia = false
-						print("DEBUG: Carpeta 'Privado' copiada como 'Privado.old'")
+				if mision_actual == MISION_SSH_2_CP_11 and source == "Privado" and destination == "Privado.old":
+					mision_actual = MISION_SSH_3_LS_12
+					start_dialog(Dialogos.ssh_cp_dialogs3)
+					print("DEBUG: Carpeta 'Privado' copiada como 'Privado.old'")
+		
 		elif FileAccess.file_exists(source_path):
 			var source_file = FileAccess.open(source_path, FileAccess.READ)
 			var content = source_file.get_as_text()
@@ -1203,7 +1274,6 @@ func process_command(command: String):
 		history.text = history_text
 	show_prompt()
 
-
 func _ping_satisfactorio():
 	ping_active = true
 	ping_seq = 1
@@ -1263,28 +1333,6 @@ func start_dialog(dialogs: Array):
 	dialog_box.start_dialog(dialogs)
 	dialog_box.visible = true
 
-# Funciones de validación para el comando ping
-func is_valid_ip(ip: String) -> bool:
-	var parts = ip.split(".")
-	if parts.size() != 4:
-		return false
-	for part in parts:
-		if not is_only_digits(part):
-			return false
-		var num = int(part)
-		if num < 0 or num > 255:
-			return false
-	return true
-
-func is_only_digits(s: String) -> bool:
-	for c in s:
-		if c < '0' or c > '9':
-			return false
-	return true
-
-func resolve_hostname(hostname: String) -> bool:
-	# Simulación simple de resolución de nombres
-	return hostname == "localhost" or hostname.ends_with(".com")
 
 func autocomplete_command():
 	var parts = current_command.strip_edges().split(" ")

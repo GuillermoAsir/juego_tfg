@@ -20,6 +20,21 @@ func remove_directory_recursive(path):
 		# Cuando esté vacío, eliminar el directorio principal
 		DirAccess.remove_absolute(path)
 
+func remove_directory_contents(path: String) -> void:
+	var dir = DirAccess.open(path)
+	if dir:
+		dir.list_dir_begin()
+		var file_name = dir.get_next()
+		while file_name != "":
+			if file_name != "." and file_name != "..":
+				var full_path = path + "/" + file_name
+				if dir.current_is_dir():
+					Funciones.remove_directory_recursive(full_path)
+				else:
+					DirAccess.remove_absolute(full_path)
+			file_name = dir.get_next()
+		dir.list_dir_end()
+		
 #función apt-get clean
 func delete_files_in(path: String) -> int:
 	var dir = DirAccess.open(path)
@@ -137,3 +152,26 @@ func prompt_password(prompt_text: String) -> String:
 	var password = password_input.text
 	dialog.queue_free()
 	return password
+
+# Funciones de validación para el comando ping
+func is_valid_ip(ip: String) -> bool:
+	var parts = ip.split(".")
+	if parts.size() != 4:
+		return false
+	for part in parts:
+		if not is_only_digits(part):
+			return false
+		var num = int(part)
+		if num < 0 or num > 255:
+			return false
+	return true
+	
+func is_only_digits(s: String) -> bool:
+	for c in s:
+		if c < '0' or c > '9':
+			return false
+	return true
+
+# Simulación simple de resolución de nombres
+func resolve_hostname(hostname: String) -> bool:
+	return hostname == "localhost" or hostname.ends_with(".com")

@@ -87,46 +87,50 @@ var ssh_cp_dialogs5 = [
 
 
 # --- MISION SSH LIMPIAR ---
-var ssh_limpiar_dialogs1 = [
+var ssh_clean_dialogs1 = [
 	"Viejo: Ahora ya estás dentro. Creo que debe ser un problema de almacenamiento. Para ver el uso del disco, utiliza el comando:\ndf -h /contabilidad\nEn la columna 'Use%' podrás ver el porcentaje utilizado."
 ]
 
-var ssh_limpiar_dialogs2 = [
+var ssh_clean_dialogs2 = [
 	"Viejo: ¡Un 98%! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... vaya, creo que ese soy yo. Je je. Pero no te preocupes, hay solución.\nEscribe: sudo apt-get clean\nContraseña: SudC0nt\nNo es una 'O', es un cero."
 ]
 
-var ssh_limpiar_dialogs3 = [
+var ssh_clean_dialogs3 = [
 	"Viejo: Buen trabajo. Ahora sigue con: sudo apt-get autoclean"
 ]
 
-var ssh_limpiar_dialogs4 = [
+var ssh_clean_dialogs4 = [
 	"Viejo: Bien hecho. Siguiente paso: sudo apt-get autoremove"
 ]
 
-var ssh_limpiar_dialogs5 = [
+var ssh_clean_dialogs5 = [
 	"Viejo: Excelente. Ahora dejamos esto limpio como recién estrenado. Ejecuta:\nrm -r /tmp/*"
 ]
 
-var ssh_limpiar_dialogs6 = [
+var ssh_clean_dialogs6 = [
 	"Viejo: Perfecto. Ahora ejecuta:\n rm -r /var/tmp/*"
 ]
 
-var ssh_limpiar_dialogs7 = [
+var ssh_clean_dialogs7 = [
 	"Viejo: ¡Muy bien! Ahora borramos las descargas del usuario con:\nrm -rf /contabilidad/Descargas/*"
 ]
 
-var ssh_limpiar_dialogs8 = [
-	"Viejo: ¡Perfecto! Ahora limpiamos la papelera con estos dos comandos:\nrm -r /contabilidad/.local/share/Trash/files/*\ny\nrm -r contabilidad/.local/share/Trash/info/*"
+var ssh_clean_dialogs8 = [
+	"Viejo: ¡Perfecto! Ahora limpiamos la papelera, empecemos con:\nrm -r /contabilidad/.local/share/Trash/files/*"
 ]
 
-var ssh_limpiar_dialogs9 = [
+var ssh_clean_dialogs9 = [
 	"Viejo: ¡Perfecto! Verifica el uso del disco nuevamente con:\ndf -h /contabilidad"
 ]
 
-var ssh_limpiar_dialogs10 = [
+var ssh_clean_dialogs10 = [
 	"Viejo: ¡Un 70%! Eso ya es otra cosa. Ya podrán volver a descargarse películas... jeje, guiño guiño.\nAhora puedes salir del servidor con:\nexit"
 ]
 
-var ssh_limpiar_dialogs11 = [
+var ssh_clean_dialogs11 = [
 	"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!\nMisión terminada: Liberar espacio.\nFin del día."
+]
+
+var ssh_clean_dialogs12 = [
+	"Viejo: Y ahora contabilidad/.local/share/Trash/info/*"
 ]
