@@ -16,7 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = MISION_SSH_4_EXIT_13 
+var mision_actual = MISION_CLEAN_10_RM_SHARE_INFO_23
 
 const MISION_INICIAL_1_CD_1 = 1
 const MISION_INICIAL_2_LS_2 = 2
@@ -604,14 +604,14 @@ func process_command(command: String):
 		var args = command.split(" ")
 		var path = current_path  # Valor por defecto
 
-		if args.size() >= 2:
-			path = args[2].strip_edges()
+		#if args.size() >= 2:
+			#path = args[2].strip_edges()
 
 		# Mostrar salida ficticia realista
 		output = "[color=white]%-16s %-8s %-8s %-8s %-6s %s\n[/color]" % ["Filesystem", "Size", "Used", "Avail", "Use%", "Mounted on"]
 
 		# Si estamos en la misión SSH_LIMPIAR y conectados por SSH
-		if ssh_active and path == "/contabilidad":
+		if ssh_active :
 				#output += "[color=yellow]%-16s[/color] %-8s %-8s %-8s %-6s %s\n" % [
 					#disk_mision_clean["filesystem"], disk_mision_clean["size"], disk_mision_clean["used"], disk_mision_clean["avail"], disk_mision_clean["use%"], disk_mision_clean["mounted"]
 				#]

@@ -28,7 +28,7 @@ var mision_inicial_dialogs4 = [
 ]
 
 var mision_inicial_dialogs5 = [
-	"Intentalo con el ping 192.168.10.10"
+	"Inténtalo con el ping 192.168.10.1"
 ]
 var mision_inicial_dialogs6 = [
 	"¡Por todos los nodos! Al router le pasa algo,\n" +
@@ -56,17 +56,17 @@ var apache_dialogs2 = [
 ]
 var apache_dialogs3 = [
 	"Viejo: Muy bien!! Luego me acercare hablar con Pam para decirle que lo hemos solucionado. Misión terminada consultar apache. \n",
-	"Departamento de Contabilidad: Hola soy Miguel, queria pediros si podriáis realizar una copia a la carpeta llamada\n"+
-	"Privado esta situado en Documentos, es importante para mi y no sais unos cotillas nada!",
-	"Viejo: Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de  \n"+
+	"Departamento de Contabilidad: Hola soy Miguel, quería pediros si podríais realizar una copia a la carpeta llamada\n"+
+	"Privado esta situado en Documentos, es importante para mi y no seáis unos cotillas nada!",
+	"Viejo: Ya sabes que tienes que hacer, ingresa al equipo desde el servicio ssh del empleado de contabilidad  \n"+
 	"solo tienes que ir a la terminal y escribir ssh contabilidad@192.168.10.100. Recuerda donde están guardas las Ips."
 ]
-
 
 # --- MISION SSH ---
 #El jugador se conecta por ssh a contabilidad@192.16.10.100 salta este dialogo:
 var ssh_cp_dialogs1 =[
-	"Viejo: Muy bien ya estás dentro! busca el fichero y realiza la copia"
+	"Viejo: Muy bien ya estás dentro! busca el fichero y realiza la copia\n"+
+	"Usa el comando cp cuando estes situado dentro de la carpeta Documentos y escribe cp Privado Privado.old"
 ]
 #El jugador tiene que usar ls si no le salta el dialogo ssh_cp_dialogs3: 
 var ssh_cp_dialogs2 = [
@@ -85,7 +85,7 @@ var ssh_cp_dialogs5 = [
 	"Departamento de Contabilidad: Hola, le hablamos desde el departamento de contabilidad.\n" +
 	"No podemos guardar nada más en el ordenador. Un saludo",
 	"Me da mucha pereza ir para ya, vas a conectarte con el servicio ssh al equipo, \n" + 
-	"es muy sencillo solo tienes que ir a la terminal y escribir ssh contabilidad@<Ip Contabilidad>. \n" +
+	"es muy sencillo solo tienes que ir a la terminal y escribir ssh contabilidad@	<Ip Contabilidad>. \n" +
 	"Recuerda donde están guardas las Ips."
 ] 
 
@@ -96,23 +96,34 @@ var ssh_clean_dialogs1 = [
 ]
 
 var ssh_clean_dialogs2 = [
-	"Viejo: ¡Un 98%! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... vaya, creo que ese soy yo. Je je. Pero no te preocupes, hay solución.\nEscribe: sudo apt-get clean\nContraseña: SudC0nt\nNo es una 'O', es un cero."
+	"Viejo: ¡Un 98%! Madre mía, ¿quién ha descuidado tanto ese ordenador? Mmm... vaya, creo que ese soy yo. Je je. Pero no te preocupes, hay solución.\nEscribe: sudo apt-get clean\nContraseña: 1234",
+	"Este comando eliminará los paquetes descargados que ya no son necesarios,\n"+
+	"liberando espacio en el disco. ¡Es como barrer debajo de la alfombra digital!\n"+
+	"Pero cuidado, no borra programas instalados, solo limpia archivos temporales."
 ]
 
 var ssh_clean_dialogs3 = [
-	"Viejo: Buen trabajo. Ahora sigue con: sudo apt-get autoclean"
+	"Viejo: Buen trabajo. Ahora sigue con: sudo apt-get autoclean",
+	"Este comando elimina paquetes antiguos que ya no sirven de nada."
 ]
 
 var ssh_clean_dialogs4 = [
-	"Viejo: Bien hecho. Siguiente paso: sudo apt-get autoremove"
+	"Viejo: Bien hecho. Siguiente paso: sudo apt-get autoremove",
+	"¡Vamos bien! Este comando va a deshacerse de los paquetes que ya no hacen falta\n" +
+	"cada vez su disco dejará de parece un Grimer y más aún Jigglypuff"
 ]
 
 var ssh_clean_dialogs5 = [
-	"Viejo: Excelente. Ahora dejamos esto limpio como recién estrenado. Ejecuta:\nrm -r /tmp/*"
+	"Viejo: Excelente. Ahora dejamos esto limpio como recién estrenado. Ejecuta:\nrm -r /tmp/*",
+	"Ahora sí, esto va a quedar tan limpio como si Shenron hubiera concedido un deseo de restauración total\n"+
+	"Este comando borra todos los archivos temporales"
 ]
 
 var ssh_clean_dialogs6 = [
-	"Viejo: Perfecto. Ahora ejecuta:\n rm -r /var/tmp/*"
+	"Viejo: Perfecto. Ahora ejecuta:\n rm -r /var/tmp/*",
+	"Este comando elimina archivos temporales de /var/tmp/, asegurando que el sistema esté limpio\n"+
+	"Esto es como usar la definitiva de Janna:\n"+
+	"todo el desorden se esparce, los problemas desaparecen, y el sistema vuelve a respirar tranquilamente"
 ]
 
 var ssh_clean_dialogs7 = [
@@ -124,7 +135,7 @@ var ssh_clean_dialogs8 = [
 ]
 
 var ssh_clean_dialogs9 = [
-	"Viejo: ¡Perfecto! Verifica el uso del disco nuevamente con:\ndf -h /contabilidad"
+	"Viejo: ¡Perfecto! Verifica el uso del disco nuevamente con:\ndf -h"
 ]
 
 var ssh_clean_dialogs10 = [
@@ -132,7 +143,7 @@ var ssh_clean_dialogs10 = [
 ]
 
 var ssh_clean_dialogs11 = [
-	"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!\nMisión terminada: Liberar espacio.\nFin del día."
+	"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!"
 ]
 
 var ssh_clean_dialogs12 = [

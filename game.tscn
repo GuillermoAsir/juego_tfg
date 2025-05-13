@@ -43,6 +43,7 @@ metadata/_edit_group_ = true
 [node name="Timer" type="Timer" parent="Background/MarginContainer/Rows/GameInfo"]
 
 [node name="NanoPanel" type="Panel" parent="."]
+visible = false
 custom_minimum_size = Vector2(800, 600)
 layout_mode = 0
 offset_right = 1150.0
