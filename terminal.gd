@@ -16,7 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = MISION_CLEAN_10_RM_SHARE_INFO_23
+var mision_actual = MISION_CLEAN_4_APT_AUTOCLEAN_17
 
 const MISION_INICIAL_1_CD_1 = 1
 const MISION_INICIAL_2_LS_2 = 2
@@ -923,7 +923,6 @@ func process_command(command: String):
 					dir.make_dir(user + "/Descargas")
 					dir.make_dir(user + "/Escritorio")
 					dir.make_dir(user + "/Documentos/Privado")
-					dir.make_dir(user + "/Documentos/Privado/caca")
 					# Directorios adicionales según el estándar FHS
 					dir.make_dir(user + "/.local")
 					dir.make_dir(user + "/.local/share")
