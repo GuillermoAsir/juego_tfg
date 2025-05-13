@@ -134,6 +134,10 @@ var ssh_clean_dialogs8 = [
 	"Viejo: ¡Perfecto! Ahora limpiamos la papelera, empecemos con:\nrm -r /contabilidad/.local/share/Trash/files/*"
 ]
 
+var ssh_clean_dialogs12 = [
+	"Viejo: Y ahora contabilidad/.local/share/Trash/info/*"
+]
+
 var ssh_clean_dialogs9 = [
 	"Viejo: ¡Perfecto! Verifica el uso del disco nuevamente con:\ndf -h"
 ]
@@ -144,8 +148,4 @@ var ssh_clean_dialogs10 = [
 
 var ssh_clean_dialogs11 = [
 	"Viejo: Ya hemos terminado esta increíble aventura. ¡Ni WALL-E limpiaba tan bien!"
-]
-
-var ssh_clean_dialogs12 = [
-	"Viejo: Y ahora contabilidad/.local/share/Trash/info/*"
 ]
