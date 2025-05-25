@@ -16,7 +16,7 @@ extends Control
 
 
 #Variables para saber en que misión está
-var mision_actual = MISION_CLEAN_4_APT_AUTOCLEAN_17
+var mision_actual = MISION_INICIAL_1_CD_1
 
 const MISION_INICIAL_1_CD_1 = 1
 const MISION_INICIAL_2_LS_2 = 2
@@ -140,6 +140,7 @@ var ping_active = false
 var ping_host = ""
 var ping_seq = 1
 var rtt_times = []
+
 
 func _ready():
 	history.bbcode_enabled = true

@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3 uid="uid://dweulhwk8j7bb"]
+
+[ext_resource type="Texture2D" uid="uid://cud0ios0ths2o" path="res://Assest/Parallax/nubes2.png" id="1_e068k"]
+[ext_resource type="Texture2D" uid="uid://bcy5cbhm3w4rf" path="res://Assest/Parallax/kingkong.png" id="2_ywtk6"]
+[ext_resource type="Texture2D" uid="uid://h62rubenu6g3" path="res://Assest/ESCENARIOS/Partes despacho/Despacho_general.PNG" id="3_e068k"]
+[ext_resource type="PackedScene" uid="uid://s5olytk7wmkw" path="res://Scenes/Personajes/chico.tscn" id="4_ywtk6"]
+
+[node name="ParallaxBackground" type="ParallaxBackground"]
+
+[node name="ParallaxLayer2" type="ParallaxLayer" parent="."]
+position = Vector2(1920, 1080)
+motion_scale = Vector2(0.8, 0.8)
+motion_mirroring = Vector2(1920, 0)
+
+[node name="Kingkong" type="Sprite2D" parent="ParallaxLayer2"]
+position = Vector2(2098, 1178)
+scale = Vector2(1.87891, 2.17578)
+texture = ExtResource("2_ywtk6")
+
+[node name="ParallaxLayer" type="ParallaxLayer" parent="."]
+position = Vector2(1920, 1080)
+motion_scale = Vector2(0.8, 0.8)
+motion_mirroring = Vector2(1920, 0)
+
+[node name="Nubes2" type="Sprite2D" parent="ParallaxLayer"]
+position = Vector2(2475, 1342)
+scale = Vector2(14.7734, 8.375)
+texture = ExtResource("1_e068k")
+
+[node name="ParallaxLayer3" type="ParallaxLayer" parent="."]
+motion_scale = Vector2(1.8, 1.8)
+
+[node name="DespachoGeneral" type="Sprite2D" parent="ParallaxLayer3"]
+position = Vector2(4399, 2411)
+texture = ExtResource("3_e068k")
+
+[node name="chico" parent="ParallaxLayer3" instance=ExtResource("4_ywtk6")]
+position = Vector2(1730, 844)
